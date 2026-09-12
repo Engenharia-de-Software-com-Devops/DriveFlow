@@ -1,0 +1,21 @@
+FROM golang:1.24-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache wget \
+    && go install github.com/air-verse/air@v1.61.7
+
+# Baixa os modulos antes do codigo para aproveitar o cache de camadas.
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ENV API_PORT=8080
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Air recompila e reinicia a API quando os arquivos Go montados pelo host mudam.
+CMD ["air", "--build.cmd", "go build -o /tmp/air/api .", "--build.bin", "/tmp/air/api"]
