@@ -32,8 +32,14 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
+      # Sem a tag, os testes de integracao nao entram na compilacao e ficariam
+      # sem analise estatica nenhuma.
+      - name: go vet (testes de integracao)
+        working-directory: backend
+        run: go vet -tags=integracao ./...
+
   testar-backend:
-    name: Backend — testes unitários
+    name: Backend — testes de unidade (tests/unidade)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -95,8 +101,10 @@ jobs:
           done
           exit 1
 
+      # A tag `integracao` e obrigatoria: sem ela estes testes nao compilam e o
+      # job passaria verde sem nunca ter falado com o Postgres.
       - name: Rodar testes com DATABASE_URL
         working-directory: backend
         env:
           DATABASE_URL: postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable
-        run: go test ./... -count=1 -v
+        run: go test -tags=integracao ./tests/integracao/... -count=1 -v
