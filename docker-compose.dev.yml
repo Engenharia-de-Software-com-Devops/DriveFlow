@@ -1,0 +1,66 @@
+# Ambiente local com hot reload para API e frontend.
+# Subir tudo: docker compose -f docker-compose.dev.yml up --build
+# Aplicacao:  http://localhost:3000
+name: driveflow-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: driveflow-dev-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-driveflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-driveflow}
+      POSTGRES_DB: ${POSTGRES_DB:-driveflow}
+    volumes:
+      - dados_postgres_dev:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-driveflow} -d ${POSTGRES_DB:-driveflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: driveflow-dev-api
+    environment:
+      API_PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
+    volumes:
+      - ./backend:/app
+      - modulos_go:/go/pkg/mod
+      - cache_go:/root/.cache/go-build
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: driveflow-dev-web
+    environment:
+      HOST: 0.0.0.0
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      REACT_APP_API_URL: ""
+    volumes:
+      - ./frontend:/app
+      - modulos_node:/app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  dados_postgres_dev:
+  modulos_go:
+  cache_go:
+  modulos_node:
