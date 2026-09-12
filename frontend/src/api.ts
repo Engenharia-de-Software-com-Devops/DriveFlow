@@ -81,6 +81,45 @@ export function cadastrarVeiculo(
   });
 }
 
+export interface Locacao {
+  id: string;
+  empresa_id: string;
+  veiculo_id: string;
+  cliente: string;
+  inicio: string;
+  fim_previsto: string;
+  devolvido_em?: string;
+  valor_previsto: number;
+  valor_final?: number;
+  status: string;
+}
+
+export interface NovaLocacao {
+  veiculo_id: string;
+  cliente: string;
+  inicio: string;
+  fim_previsto: string;
+}
+
+export function listarLocacoes(empresaId: string) {
+  return requisitar<Locacao[]>(`/api/empresas/${empresaId}/locacoes`);
+}
+
+export function criarLocacao(empresaId: string, locacao: NovaLocacao) {
+  return requisitar<Locacao>(`/api/empresas/${empresaId}/locacoes`, {
+    method: 'POST',
+    body: JSON.stringify(locacao),
+  });
+}
+
+export function devolverLocacao(empresaId: string, locacaoId: string, devolvidoEm?: string) {
+  const opcoes: RequestInit = { method: 'POST' };
+  if (devolvidoEm) {
+    opcoes.body = JSON.stringify({ devolvido_em: devolvidoEm });
+  }
+  return requisitar<Locacao>(`/api/empresas/${empresaId}/locacoes/${locacaoId}/devolucao`, opcoes);
+}
+
 // Os valores trafegam em centavos para evitar erro de arredondamento.
 export function formatarMoeda(centavos: number | null | undefined) {
   if (centavos === null || centavos === undefined) return '-';

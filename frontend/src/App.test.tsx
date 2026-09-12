@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import * as api from './api'
@@ -10,7 +11,11 @@ describe('App', () => {
   })
 
   it('pede o cadastro da empresa quando nenhuma esta selecionada', async () => {
-    render(<App />)
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    )
 
     expect(await screen.findByRole('heading', { name: 'Cadastrar empresa' })).toBeInTheDocument()
   })
