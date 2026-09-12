@@ -71,7 +71,7 @@ jobs:
         working-directory: frontend
         env:
           CI: true
-        run: npm test -- --watchAll=false
+        run: npm test -- --run
 
   testar-integracao:
     name: Backend — testes de integração (Postgres)
