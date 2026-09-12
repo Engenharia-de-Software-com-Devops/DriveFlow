@@ -1,0 +1,25 @@
+# No repositorio, todo arquivo de texto e LF. Vale para qualquer clone,
+# independente de como cada pessoa tenha o core.autocrlf configurado.
+* text=auto
+
+# Estes precisam ser LF tambem na copia de trabalho, porque a ferramenta que
+# os le rejeita CRLF ou quebra com ele.
+#
+# O caso que motivou o arquivo: gofmt considera CRLF um erro de formatacao.
+# Sem a regra, um clone no Windows com core.autocrlf=true recebe todo .go em
+# CRLF e `make verificar` passa a listar o repositorio inteiro como
+# desformatado, o mesmo que o job `verificar` do CI usa para falhar.
+*.go        text eol=lf
+Makefile    text eol=lf
+*.sh        text eol=lf
+
+# Rodam dentro de container Linux ou sao lidos pelo runner do CI.
+Dockerfile* text eol=lf
+*.conf      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.sql       text eol=lf
+
+# Binario: nunca normalizar.
+*.png       binary
+*.ico       binary
