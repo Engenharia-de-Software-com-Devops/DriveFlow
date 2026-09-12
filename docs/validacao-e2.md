@@ -19,10 +19,13 @@ são ignorados automaticamente quando `DATABASE_URL` não está definida.
 **Obtido**
 
 ```
-?   	driveflow/backend	[no test files]
-ok  	driveflow/backend/internal/api	0.006s
-ok  	driveflow/backend/internal/armazenamento	0.005s
-ok  	driveflow/backend/internal/locacao	0.004s
+?   	driveflow/backend/cmd/app	[no test files]
+?   	driveflow/backend/configs	[no test files]
+ok  	driveflow/backend/internal/delivery/http	0.879s
+ok  	driveflow/backend/internal/entities	0.506s
+ok  	driveflow/backend/internal/repository	0.782s
+ok  	driveflow/backend/internal/usecases	0.635s
+?   	driveflow/backend/pkg/id	[no test files]
 ```
 
 ---
@@ -37,10 +40,12 @@ cd backend && DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/drivef
 ```
 
 **Esperado:** os mesmos pacotes em `ok`, agora com os quatro testes de
-PostgreSQL executando de verdade — `internal/armazenamento` passa a levar
+PostgreSQL executando de verdade — `internal/repository` passa a levar
 centésimos de segundo em vez de milésimos.
 
-**Obtido**
+**Obtido** (rodada anterior à reorganização do backend em clean architecture;
+os nomes de pacote e de teste abaixo são os da estrutura antiga e a evidência
+precisa ser refeita na próxima execução com o container `db` no ar)
 
 ```
 ?   	driveflow/backend	[no test files]
@@ -101,7 +106,7 @@ nenhum apontamento do `go vet`.
 **Comando**
 
 ```bash
-cd backend && DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable" go run .
+cd backend && DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable" go run ./cmd/app
 ```
 
 **Esperado:** a API conecta no banco, aplica as três migrations em ordem e

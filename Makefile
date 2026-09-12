@@ -13,22 +13,22 @@ instalar: ## Baixa as dependencias do backend e do frontend
 
 testar: testar-backend testar-frontend ## Roda todos os testes automatizados
 
-testar-backend: ## Testes do backend (os de banco sao ignorados sem DATABASE_URL)
+testar-backend: ## Testes de unidade do backend, em tests/unidade (sem banco e sem docker)
 	cd backend && go test ./... -count=1
 
 testar-frontend: ## Testes do frontend
 	cd frontend && npm test -- --run
 
-testar-integracao: ## Testes de integracao contra o postgres do compose
+testar-integracao: ## Testes de integracao, em tests/integracao (sobe o postgres do compose)
 	docker compose up -d db
 	cd backend && DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable" \
-		go test ./... -count=1 -v
+		go test -tags=integracao ./tests/integracao/... -count=1 -v
 
-verificar: ## Formatacao e analise estatica do backend
-	cd backend && gofmt -l . && go vet ./...
+verificar: ## Formatacao e analise estatica do backend, testes de integracao incluidos
+	cd backend && gofmt -l . && go vet ./... && go vet -tags=integracao ./...
 
 api: ## Sobe a api local (em memoria, sem precisar de banco)
-	cd backend && go run .
+	cd backend && go run ./cmd/app
 
 web: ## Sobe o frontend local em modo desenvolvimento
 	cd frontend && npm run dev

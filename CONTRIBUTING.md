@@ -22,8 +22,9 @@ abra uma issue em vez de contornar localmente.
 git checkout dev && git pull origin dev
 git checkout -b feature/assunto-da-mudanca
 # ... código e testes ...
-make verificar       # gofmt + go vet
-make testar
+make verificar       # gofmt + go vet (com e sem a tag `integracao`)
+make testar          # unidade do backend + frontend, sem depender de banco
+make testar-integracao   # se você mexeu em SQL, migration ou repositório
 git push -u origin feature/assunto-da-mudanca
 ```
 
@@ -33,7 +34,9 @@ Depois, abra o Pull Request para `dev`.
 
 - [ ] `make testar` passa localmente
 - [ ] `make verificar` não aponta nada
-- [ ] Mudança de comportamento veio acompanhada de teste
+- [ ] Mudança de comportamento veio acompanhada de teste, na pasta certa:
+      sem banco → `backend/tests/unidade/<camada>/`; com Postgres →
+      `backend/tests/integracao/`, com `//go:build integracao` na primeira linha
 - [ ] Mudança de schema entrou como nova migration `NNNN_descricao.up.sql`,
       com o `.down.sql` correspondente — **migration já aplicada nunca é editada**
 - [ ] README atualizado se o modo de executar ou testar mudou
@@ -56,10 +59,14 @@ Depois, abra o Pull Request para `dev`.
 
 | Quero mudar... | Mexo em |
 | -------------- | ------- |
-| Regra de negócio (tarifa, conflito, validação) | `backend/internal/locacao/` |
-| Rota ou código HTTP | `backend/internal/api/` |
-| Schema do banco | `backend/internal/armazenamento/migracoes/` (arquivo novo) |
-| Consulta SQL | `backend/internal/armazenamento/postgres.go` |
+| Modelo de domínio, erro de domínio ou regra de tarifa | `backend/internal/entities/` |
+| Regra de negócio (conflito, validação, fluxo do contrato) | `backend/internal/usecases/` |
+| Rota ou código HTTP | `backend/internal/delivery/http/` |
+| Schema do banco | `backend/internal/repository/migrations/` (arquivo novo) |
+| Consulta SQL | `backend/internal/repository/postgres_repo.go` |
+| Teste sem banco | `backend/tests/unidade/` (espelha a camada) |
+| Teste que precisa de banco | `backend/tests/integracao/` (tag `integracao`) |
+| Montagem das camadas (injeção de dependência) | `backend/cmd/app/main.go` |
 | Tela | `frontend/src/componentes/` |
 | Chamada à API | `frontend/src/api.js` |
 | Containers | `docker-compose.yml`, `*/Dockerfile` |

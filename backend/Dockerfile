@@ -11,7 +11,7 @@ RUN go mod download
 COPY . .
 
 # Binario estatico: a imagem final nao precisa de toolchain Go nem de libc.
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/api .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/api ./cmd/app
 
 # ---- Imagem final --------------------------------------------------------
 FROM alpine:3.20
