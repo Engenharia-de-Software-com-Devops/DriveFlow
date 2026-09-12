@@ -1,7 +1,7 @@
 # Atalhos para os comandos do projeto. `make` sem argumento lista os alvos.
 .DEFAULT_GOAL := ajuda
 .PHONY: ajuda instalar testar testar-backend testar-frontend testar-integracao \
-        verificar api web subir derrubar logs limpar
+        verificar build api web subir derrubar logs limpar
 
 ajuda: ## Lista os alvos disponiveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -27,6 +27,10 @@ testar-integracao: ## Testes de integracao, em tests/integracao (sobe o postgres
 verificar: ## Formatacao e analise estatica do backend, testes de integracao incluidos
 	cd backend && gofmt -l . && go vet ./... && go vet -tags=integracao ./...
 
+build: ## Builda o binario da api e o bundle do frontend
+	cd backend && go build -o bin/api ./cmd/app
+	cd frontend && npm run build
+
 api: ## Sobe a api local (em memoria, sem precisar de banco)
 	cd backend && go run ./cmd/app
 
@@ -45,4 +49,4 @@ logs: ## Acompanha os logs dos 3 containers
 
 limpar: ## Remove containers, volumes e artefatos de build
 	docker compose down -v
-	rm -rf frontend/build frontend/coverage backend/bin
+	rm -rf frontend/dist frontend/coverage backend/bin

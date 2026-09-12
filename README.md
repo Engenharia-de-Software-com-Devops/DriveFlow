@@ -156,8 +156,8 @@ make testar-integracao   # sobe o container db e roda também os testes de banco
 Sem `make`:
 
 ```bash
-cd backend  && go test ./... -count=1                   # unidade
-cd frontend && CI=true npm test -- --watchAll=false     # frontend
+cd backend  && go test ./... -count=1   # unidade
+cd frontend && npm test -- --run        # frontend
 ```
 
 **Resultado esperado:** todos os pacotes Go em `ok` e as duas suítes do
@@ -190,6 +190,16 @@ da tag não fique sem análise estática.
 
 A evidência da execução registrada pela equipe está em
 [`docs/validacao-e2.md`](docs/validacao-e2.md).
+
+### Integração contínua
+
+O workflow [`​.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em
+todo push e PR para `dev` e `main`: `verificar` (gofmt + vet), os três alvos
+de teste acima e um job de `build` (api e frontend), nessa ordem. `main` e
+`dev` exigem os cinco jobs verdes antes de permitir merge. Evidência de
+pipeline verde, de uma falha real já corrigida e do teste que trava a
+entrega se a regra de conflito de reserva quebrar está em
+[`docs/validacao-e3.md`](docs/validacao-e3.md).
 
 ---
 
@@ -327,5 +337,7 @@ Cada gargalo levantado no Encontro 1 tem endereço no código:
 O diagnóstico completo e o rastreio detalhado estão em
 [`docs/diagnostico-e1.md`](docs/diagnostico-e1.md).
 
-**Próximo incremento (E3):** transformar `make testar` em pipeline de
-integração contínua, com status check obrigatório antes do merge.
+**Encontro 3:** `make testar` virou pipeline de integração contínua
+([`ci.yml`](.github/workflows/ci.yml)), com status check obrigatório antes do
+merge em `dev` e `main`. Evidência em
+[`docs/validacao-e3.md`](docs/validacao-e3.md).

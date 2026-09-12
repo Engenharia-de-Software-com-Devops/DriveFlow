@@ -108,3 +108,33 @@ jobs:
         env:
           DATABASE_URL: postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable
         run: go test -tags=integracao ./tests/integracao/... -count=1 -v
+
+  build:
+    name: Build — api e web
+    runs-on: ubuntu-24.04
+    needs: [testar-backend, testar-frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: backend/go.sum
+
+      - name: Build da api
+        working-directory: backend
+        run: go build -o bin/api ./cmd/app
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências do frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build do frontend
+        working-directory: frontend
+        run: npm run build
