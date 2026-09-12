@@ -1,9 +1,12 @@
 // Cliente HTTP da API de locacao.
 //
-// A URL base vem de REACT_APP_API_URL, definida em build. No docker compose o
-// container web aponta para o container api; em desenvolvimento, o padrao e a
-// api rodando na maquina local.
-const URL_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+// A URL base vem de REACT_APP_API_URL, fixada no momento do build.
+//
+// No docker compose ela e definida como string vazia: o nginx do container web
+// serve a aplicacao e repassa /api e /health para o container api, entao as
+// chamadas ficam relativas e nao precisam de CORS. Fora do compose, o padrao e
+// a api rodando na maquina local.
+const URL_BASE = (process.env.REACT_APP_API_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
 // ErroApi carrega a mensagem devolvida pela api junto com o status HTTP,
 // para a interface distinguir conflito de reserva (409) de dado invalido (422).
