@@ -12,17 +12,17 @@ func TestRegisterVehicleValidatesPlate(t *testing.T) {
 	s := newServices(t)
 	ctx := context.Background()
 
-	company, err := s.companies.Register(ctx, "Locadora Alfa", "12345678000190")
+	company, err := s.Companies.Register(ctx, "Locadora Alfa", "12345678000190")
 	if err != nil {
 		t.Fatalf("Register empresa: %v", err)
 	}
 
-	if _, err := s.vehicles.Register(ctx, company.ID, "ABC12", "Onix", "economico", 15000); !errors.Is(err, entities.ErrInvalidData) {
+	if _, err := s.Vehicles.Register(ctx, company.ID, "ABC12", "Onix", "economico", 15000); !errors.Is(err, entities.ErrInvalidData) {
 		t.Fatalf("placa invalida deveria falhar, obtido %v", err)
 	}
 
 	// Placa no padrao Mercosul, informada com hifen e em minusculas.
-	vehicle, err := s.vehicles.Register(ctx, company.ID, "abc-1d23", "Onix", "economico", 15000)
+	vehicle, err := s.Vehicles.Register(ctx, company.ID, "abc-1d23", "Onix", "economico", 15000)
 	if err != nil {
 		t.Fatalf("Register veiculo: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestRegisterVehicleRejectsDuplicatePlate(t *testing.T) {
 	ctx := context.Background()
 
 	company, _ := companyWithVehicle(t, s, "Locadora Alfa", "12345678000190", "ABC1D23")
-	if _, err := s.vehicles.Register(ctx, company.ID, "ABC1D23", "Onix", "economico", 15000); !errors.Is(err, entities.ErrDuplicatePlate) {
+	if _, err := s.Vehicles.Register(ctx, company.ID, "ABC1D23", "Onix", "economico", 15000); !errors.Is(err, entities.ErrDuplicatePlate) {
 		t.Fatalf("esperado ErrDuplicatePlate, obtido %v", err)
 	}
 }
@@ -51,7 +51,7 @@ func TestListFleetIsolatesByCompany(t *testing.T) {
 	alfa, _ := companyWithVehicle(t, s, "Locadora Alfa", "12345678000190", "ABC1D23")
 	beta, _ := companyWithVehicle(t, s, "Locadora Beta", "98765432000121", "XYZ9A88")
 
-	fleetAlfa, err := s.vehicles.ListFleet(ctx, alfa.ID)
+	fleetAlfa, err := s.Vehicles.ListFleet(ctx, alfa.ID)
 	if err != nil {
 		t.Fatalf("ListFleet: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestListFleetIsolatesByCompany(t *testing.T) {
 		t.Fatalf("frota da Alfa = %+v, esperado apenas ABC1D23", fleetAlfa)
 	}
 
-	fleetBeta, err := s.vehicles.ListFleet(ctx, beta.ID)
+	fleetBeta, err := s.Vehicles.ListFleet(ctx, beta.ID)
 	if err != nil {
 		t.Fatalf("ListFleet: %v", err)
 	}

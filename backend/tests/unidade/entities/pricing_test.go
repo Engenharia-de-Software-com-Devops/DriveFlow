@@ -1,8 +1,12 @@
-package entities
+// Testes das regras de tarifa: aritmetica pura de diaria, multa e sobreposicao
+// de periodo, sem repositorio nem banco.
+package entities_test
 
 import (
 	"testing"
 	"time"
+
+	"driveflow/backend/internal/entities"
 )
 
 func at(day int, hour int) time.Time {
@@ -25,8 +29,8 @@ func TestBillableDays(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := BillableDays(c.start, c.end); got != c.expect {
-				t.Errorf("BillableDays() = %d, esperado %d", got, c.expect)
+			if got := entities.BillableDays(c.start, c.end); got != c.expect {
+				t.Errorf("entities.BillableDays() = %d, esperado %d", got, c.expect)
 			}
 		})
 	}
@@ -34,28 +38,28 @@ func TestBillableDays(t *testing.T) {
 
 func TestEstimatedTotal(t *testing.T) {
 	// Tarifa de R$ 150,00 por 3 diarias = R$ 450,00.
-	if got := EstimatedTotal(15000, at(1, 0), at(4, 0)); got != 45000 {
-		t.Errorf("EstimatedTotal() = %d, esperado 45000", got)
+	if got := entities.EstimatedTotal(15000, at(1, 0), at(4, 0)); got != 45000 {
+		t.Errorf("entities.EstimatedTotal() = %d, esperado 45000", got)
 	}
 }
 
 func TestFinalTotalSemAtraso(t *testing.T) {
 	// Devolucao no prazo cobra apenas o previsto.
-	if got := FinalTotal(15000, at(1, 0), at(4, 0), at(4, 0)); got != 45000 {
-		t.Errorf("FinalTotal() = %d, esperado 45000", got)
+	if got := entities.FinalTotal(15000, at(1, 0), at(4, 0), at(4, 0)); got != 45000 {
+		t.Errorf("entities.FinalTotal() = %d, esperado 45000", got)
 	}
 }
 
 func TestFinalTotalDevolucaoAntecipadaNaoReduz(t *testing.T) {
-	if got := FinalTotal(15000, at(1, 0), at(4, 0), at(2, 0)); got != 45000 {
-		t.Errorf("FinalTotal() = %d, esperado 45000", got)
+	if got := entities.FinalTotal(15000, at(1, 0), at(4, 0), at(2, 0)); got != 45000 {
+		t.Errorf("entities.FinalTotal() = %d, esperado 45000", got)
 	}
 }
 
 func TestFinalTotalComAtraso(t *testing.T) {
 	// 3 diarias previstas (45000) + 1 diaria de atraso (15000) + multa de 30% (4500).
-	if got := FinalTotal(15000, at(1, 0), at(4, 0), at(5, 0)); got != 64500 {
-		t.Errorf("FinalTotal() = %d, esperado 64500", got)
+	if got := entities.FinalTotal(15000, at(1, 0), at(4, 0), at(5, 0)); got != 64500 {
+		t.Errorf("entities.FinalTotal() = %d, esperado 64500", got)
 	}
 }
 
@@ -75,8 +79,8 @@ func TestPeriodsOverlap(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := PeriodsOverlap(c.a1, c.a2, c.b1, c.b2); got != c.expect {
-				t.Errorf("PeriodsOverlap() = %v, esperado %v", got, c.expect)
+			if got := entities.PeriodsOverlap(c.a1, c.a2, c.b1, c.b2); got != c.expect {
+				t.Errorf("entities.PeriodsOverlap() = %v, esperado %v", got, c.expect)
 			}
 		})
 	}

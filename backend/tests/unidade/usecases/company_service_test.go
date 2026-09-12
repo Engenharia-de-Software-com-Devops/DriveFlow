@@ -12,10 +12,10 @@ func TestRegisterCompanyValidatesTaxID(t *testing.T) {
 	s := newServices(t)
 	ctx := context.Background()
 
-	if _, err := s.companies.Register(ctx, "Locadora Alfa", "123"); !errors.Is(err, entities.ErrInvalidData) {
+	if _, err := s.Companies.Register(ctx, "Locadora Alfa", "123"); !errors.Is(err, entities.ErrInvalidData) {
 		t.Fatalf("esperado ErrInvalidData, obtido %v", err)
 	}
-	company, err := s.companies.Register(ctx, "Locadora Alfa", "12.345.678/0001-90")
+	company, err := s.Companies.Register(ctx, "Locadora Alfa", "12.345.678/0001-90")
 	if err != nil {
 		t.Fatalf("Register: %v", err)
 	}

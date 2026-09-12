@@ -1,3 +1,6 @@
+// Testes das migrations que rodam sem banco: leem os .sql embutidos e conferem
+// versionamento e conteudo. O que precisa de postgres no ar esta em
+// tests/integracao/repository.
 package repository_test
 
 import (

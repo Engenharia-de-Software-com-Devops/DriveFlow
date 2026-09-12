@@ -1,3 +1,5 @@
+// Testes das rotas HTTP: status, formato do corpo e traducao de erro de dominio.
+// Sobem o handler sobre o repositorio em memoria, entao rodam sem banco.
 package httpdelivery_test
 
 import (
@@ -11,19 +13,14 @@ import (
 
 	httpdelivery "driveflow/backend/internal/delivery/http"
 	"driveflow/backend/internal/repository"
-	"driveflow/backend/internal/usecases"
+	"driveflow/backend/tests/apoio"
 )
 
 func newServer(t *testing.T) *httpdelivery.Server {
 	t.Helper()
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	repo := repository.NewMemoryRepository()
-	return httpdelivery.NewServer(
-		usecases.NewCompanyService(repo, nil, nil),
-		usecases.NewVehicleService(repo, nil),
-		usecases.NewRentalService(repo, nil, nil),
-		quiet,
-	)
+	s := apoio.Padrao(repository.NewMemoryRepository())
+	return httpdelivery.NewServer(s.Companies, s.Vehicles, s.Rentals, quiet)
 }
 
 // call executa uma requisicao contra o servidor e devolve status e corpo decodificado.

@@ -1,3 +1,9 @@
+//go:build integracao
+
+// Testes de integracao do repositorio PostgreSQL: sobem contra um banco real,
+// entao so compilam com a tag `integracao` e ficam fora do `go test ./...` do
+// dia a dia. Use `make testar-integracao`, que sobe o container e define a
+// DATABASE_URL. Teste que roda sem banco vai em tests/unidade.
 package repository_test
 
 import (
@@ -14,18 +20,18 @@ import (
 
 	"driveflow/backend/internal/entities"
 	"driveflow/backend/internal/repository"
-	"driveflow/backend/internal/usecases"
+	"driveflow/backend/tests/apoio"
 )
 
 // openPostgres conecta no banco indicado por DATABASE_URL e aplica as
-// migrations. Sem a variavel definida o teste e ignorado, entao
-// `go test ./...` continua rodando sem depender de container.
+// migrations. Como estes testes so compilam com a tag `integracao`, pedir a
+// suite sem banco e erro de uso, nao motivo para ignorar em silencio.
 func openPostgres(t *testing.T) *sql.DB {
 	t.Helper()
 
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
-		t.Skip("DATABASE_URL nao definida: teste de integracao com o postgres ignorado")
+		t.Fatal("DATABASE_URL nao definida: rode `make testar-integracao`, que sobe o postgres do compose")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -52,21 +58,6 @@ func truncate(t *testing.T, db *sql.DB) {
 	if _, err := db.Exec(`TRUNCATE locacoes, veiculos, empresas CASCADE`); err != nil {
 		t.Fatalf("limpar tabelas: %v", err)
 	}
-}
-
-// pgServices monta os casos de uso sobre o repositorio PostgreSQL.
-func pgServices(repo usecases.Repository) services {
-	return services{
-		companies: usecases.NewCompanyService(repo, nil, nil),
-		vehicles:  usecases.NewVehicleService(repo, nil),
-		rentals:   usecases.NewRentalService(repo, nil, nil),
-	}
-}
-
-type services struct {
-	companies *usecases.CompanyService
-	vehicles  *usecases.VehicleService
-	rentals   *usecases.RentalService
 }
 
 func pgDay(d int) time.Time {
@@ -98,19 +89,19 @@ func TestApplyMigrationsIsIdempotent(t *testing.T) {
 }
 
 func TestPostgresFullFlow(t *testing.T) {
-	s := pgServices(repository.NewPostgresRepository(openPostgres(t)))
+	s := apoio.Padrao(repository.NewPostgresRepository(openPostgres(t)))
 	ctx := context.Background()
 
-	company, err := s.companies.Register(ctx, "Locadora Alfa", "12345678000190")
+	company, err := s.Companies.Register(ctx, "Locadora Alfa", "12345678000190")
 	if err != nil {
 		t.Fatalf("Register empresa: %v", err)
 	}
-	vehicle, err := s.vehicles.Register(ctx, company.ID, "ABC1D23", "Onix 1.0", "economico", 15000)
+	vehicle, err := s.Vehicles.Register(ctx, company.ID, "ABC1D23", "Onix 1.0", "economico", 15000)
 	if err != nil {
 		t.Fatalf("Register veiculo: %v", err)
 	}
 
-	rental, err := s.rentals.Reserve(ctx, company.ID, vehicle.ID, "Cliente A", pgDay(10), pgDay(13))
+	rental, err := s.Rentals.Reserve(ctx, company.ID, vehicle.ID, "Cliente A", pgDay(10), pgDay(13))
 	if err != nil {
 		t.Fatalf("Reserve: %v", err)
 	}
@@ -118,11 +109,11 @@ func TestPostgresFullFlow(t *testing.T) {
 		t.Errorf("valor previsto = %d, esperado 45000", rental.EstimatedTotal)
 	}
 
-	if _, err := s.rentals.Reserve(ctx, company.ID, vehicle.ID, "Cliente B", pgDay(12), pgDay(16)); !errors.Is(err, entities.ErrBookingConflict) {
+	if _, err := s.Rentals.Reserve(ctx, company.ID, vehicle.ID, "Cliente B", pgDay(12), pgDay(16)); !errors.Is(err, entities.ErrBookingConflict) {
 		t.Fatalf("esperado ErrBookingConflict, obtido %v", err)
 	}
 
-	closed, err := s.rentals.Return(ctx, company.ID, rental.ID, pgDay(14))
+	closed, err := s.Rentals.Return(ctx, company.ID, rental.ID, pgDay(14))
 	if err != nil {
 		t.Fatalf("Return: %v", err)
 	}
@@ -130,7 +121,7 @@ func TestPostgresFullFlow(t *testing.T) {
 		t.Errorf("valor final = %v, esperado 64500", closed.FinalTotal)
 	}
 
-	rentals, err := s.rentals.List(ctx, company.ID)
+	rentals, err := s.Rentals.List(ctx, company.ID)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -179,28 +170,28 @@ func TestPostgresBlocksOverlapInDatabase(t *testing.T) {
 }
 
 func TestPostgresIsolatesTenants(t *testing.T) {
-	s := pgServices(repository.NewPostgresRepository(openPostgres(t)))
+	s := apoio.Padrao(repository.NewPostgresRepository(openPostgres(t)))
 	ctx := context.Background()
 
-	alfa, err := s.companies.Register(ctx, "Locadora Alfa", "12345678000190")
+	alfa, err := s.Companies.Register(ctx, "Locadora Alfa", "12345678000190")
 	if err != nil {
 		t.Fatalf("Register alfa: %v", err)
 	}
-	beta, err := s.companies.Register(ctx, "Locadora Beta", "98765432000121")
+	beta, err := s.Companies.Register(ctx, "Locadora Beta", "98765432000121")
 	if err != nil {
 		t.Fatalf("Register beta: %v", err)
 	}
 
-	vehicleAlfa, err := s.vehicles.Register(ctx, alfa.ID, "ABC1D23", "Onix", "economico", 15000)
+	vehicleAlfa, err := s.Vehicles.Register(ctx, alfa.ID, "ABC1D23", "Onix", "economico", 15000)
 	if err != nil {
 		t.Fatalf("Register veiculo: %v", err)
 	}
 
-	if _, err := s.rentals.Reserve(ctx, beta.ID, vehicleAlfa.ID, "Cliente B", pgDay(10), pgDay(12)); !errors.Is(err, entities.ErrNotFound) {
+	if _, err := s.Rentals.Reserve(ctx, beta.ID, vehicleAlfa.ID, "Cliente B", pgDay(10), pgDay(12)); !errors.Is(err, entities.ErrNotFound) {
 		t.Fatalf("esperado ErrNotFound, obtido %v", err)
 	}
 
-	fleetBeta, err := s.vehicles.ListFleet(ctx, beta.ID)
+	fleetBeta, err := s.Vehicles.ListFleet(ctx, beta.ID)
 	if err != nil {
 		t.Fatalf("ListFleet: %v", err)
 	}
