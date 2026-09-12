@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	_ "github.com/lib/pq"
 
 	"driveflow/backend/internal/api"
 	"driveflow/backend/internal/armazenamento"
@@ -29,8 +32,11 @@ func main() {
 func executar(log *slog.Logger) error {
 	endereco := valorOuPadrao("API_PORT", "8080")
 
-	repo := armazenamento.NovaMemoria()
-	log.Info("armazenamento em memoria ativo (dados nao persistem entre reinicios)")
+	repo, fechar, err := abrirArmazenamento(log)
+	if err != nil {
+		return err
+	}
+	defer fechar()
 
 	servidor := &http.Server{
 		Addr:              ":" + endereco,
@@ -59,6 +65,42 @@ func executar(log *slog.Logger) error {
 		ctx, cancelar := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancelar()
 		return servidor.Shutdown(ctx)
+	}
+}
+
+// abrirArmazenamento escolhe a persistencia pela variavel DATABASE_URL.
+//
+// Com DATABASE_URL definida (o caso do docker compose, onde existe o container
+// db), a api conecta no PostgreSQL e aplica as migrations pendentes antes de
+// aceitar requisicoes. Sem ela, sobe com armazenamento em memoria, o que
+// mantem `go run .` e `go test ./...` executaveis sem depender de container.
+func abrirArmazenamento(log *slog.Logger) (locacao.Repositorio, func(), error) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		log.Warn("DATABASE_URL nao definida: usando armazenamento em memoria (os dados nao persistem)")
+		return armazenamento.NovaMemoria(), func() {}, nil
+	}
+
+	ctx, cancelar := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelar()
+
+	db, err := armazenamento.Conectar(ctx, url, 45*time.Second)
+	if err != nil {
+		return nil, nil, err
+	}
+	log.Info("conectado ao postgres")
+
+	if err := armazenamento.AplicarMigracoes(db, log); err != nil {
+		_ = db.Close()
+		return nil, nil, err
+	}
+
+	return armazenamento.NovoPostgres(db), func() { fecharBanco(db, log) }, nil
+}
+
+func fecharBanco(db *sql.DB, log *slog.Logger) {
+	if err := db.Close(); err != nil {
+		log.Error("falha ao fechar conexao com o banco", "erro", err)
 	}
 }
 
