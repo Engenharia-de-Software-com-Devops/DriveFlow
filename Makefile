@@ -28,7 +28,7 @@ verificar: ## Formatacao e analise estatica do backend
 	cd backend && gofmt -l . && go vet ./...
 
 api: ## Sobe a api local (em memoria, sem precisar de banco)
-	cd backend && go run .
+	cd backend && go run ./cmd/app
 
 web: ## Sobe o frontend local em modo desenvolvimento
 	cd frontend && npm start
