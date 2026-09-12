@@ -1,20 +1,139 @@
-.App {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+:root {
+  --cor-fundo: #0f172a;
+  --cor-cartao: #1e293b;
+  --cor-texto: #e2e8f0;
+  --cor-suave: #94a3b8;
+  --cor-borda: #334155;
+  --cor-destaque: #38bdf8;
+  --cor-erro: #f87171;
+  --cor-ok: #4ade80;
 }
 
-.App-header {
-  text-align: center;
-}
-
-.App-header h1 {
-  margin: 0 0 0.5rem;
-  font-size: 2.5rem;
-}
-
-.App-header p {
+body {
   margin: 0;
-  color: #555;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.app {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+header h1 {
+  margin: 0;
+  color: var(--cor-destaque);
+}
+
+header p {
+  margin: 0.25rem 0 1.5rem;
+  color: var(--cor-suave);
+}
+
+.cartao {
+  background: var(--cor-cartao);
+  border: 1px solid var(--cor-borda);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.cartao h2 {
+  margin-top: 0;
+}
+
+.ajuda {
+  color: var(--cor-suave);
+  font-size: 0.9rem;
+}
+
+form {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+form h3 {
+  margin: 0.5rem 0 0;
+}
+
+label {
+  font-size: 0.85rem;
+  color: var(--cor-suave);
+}
+
+input,
+select {
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--cor-borda);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-size: 0.95rem;
+}
+
+button {
+  margin-top: 0.75rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: var(--cor-destaque);
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+th {
+  color: var(--cor-suave);
+  font-weight: 600;
+}
+
+td button {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.erro {
+  color: var(--cor-erro);
+}
+
+.aviso {
+  color: var(--cor-ok);
+}
+
+.empresa-ativa button {
+  background: transparent;
+  border: 1px solid var(--cor-borda);
+  color: var(--cor-suave);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
