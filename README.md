@@ -100,6 +100,40 @@ npm start
 # abre http://localhost:3000
 ```
 
+### Opção C — só o banco em container, API e frontend locais
+
+Três terminais. Útil para desenvolver a API/frontend com hot-reload e
+persistência real, sem buildar as imagens de `api` e `web`.
+
+**Terminal 1 — banco:**
+
+```bash
+docker compose up -d db
+# aguarde ficar "healthy": docker compose ps db
+```
+
+**Terminal 2 — API:**
+
+```bash
+cd backend
+export DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable"
+go run .
+# api ouvindo na porta 8080
+```
+
+**Terminal 3 — frontend:**
+
+```bash
+cd frontend
+npm install
+npm start
+# abre http://localhost:3000
+```
+
+Para parar só o banco: `docker compose stop db`. Se a porta 5432 já estiver em
+uso por outro container/serviço no host, libere-a antes de subir (`docker
+compose up -d db` falha com `port is already allocated` nesse caso).
+
 ---
 
 ## Como testar
