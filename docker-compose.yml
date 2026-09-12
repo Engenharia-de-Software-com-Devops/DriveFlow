@@ -1,0 +1,62 @@
+# Os 3 containers do projeto, conforme o diagnostico do E1:
+#   db  - PostgreSQL 16
+#   api - backend em Go
+#   web - frontend em React servido por nginx
+#
+# Subir tudo:      docker compose up --build
+# Acessar a app:   http://localhost:3000
+name: driveflow
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: driveflow-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-driveflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-driveflow}
+      POSTGRES_DB: ${POSTGRES_DB:-driveflow}
+    volumes:
+      - dados_postgres:/var/lib/postgresql/data
+    ports:
+      # Exposto so para inspecao local com psql; a api fala pela rede interna.
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-driveflow} -d ${POSTGRES_DB:-driveflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+    container_name: driveflow-api
+    environment:
+      API_PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
+    depends_on:
+      db:
+        # A api so sobe depois que o banco aceita conexoes: ela aplica as
+        # migrations na inicializacao e precisa do db respondendo.
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Vazio: o nginx do proprio container repassa /api para a api.
+        REACT_APP_API_URL: ""
+    container_name: driveflow-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    restart: unless-stopped
+
+volumes:
+  dados_postgres:
