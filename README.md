@@ -138,24 +138,55 @@ compose up -d db` falha com `port is already allocated` nesse caso).
 
 ## Como testar
 
+A suíte está dividida em dois níveis, e a diferença é só uma: precisa de banco
+no ar ou não.
+
+| Alvo | O que roda | Precisa de Docker? |
+| ---- | ---------- | ------------------ |
+| `make testar` | unidade do backend + frontend | não |
+| `make testar-backend` | unidade do backend | não |
+| `make testar-frontend` | suítes do React | não |
+| `make testar-integracao` | unidade + integração com o Postgres | sim |
+
 ```bash
-make testar              # backend + frontend
-make testar-backend      # go test ./...
-make testar-frontend     # CI=true npm test
-make testar-integracao   # sobe o container db e roda os testes contra o Postgres
+make testar              # o de todo dia: rápido e sem dependência externa
+make testar-integracao   # sobe o container db e roda também os testes de banco
 ```
 
 Sem `make`:
 
 ```bash
-cd backend  && go test ./... -count=1
-cd frontend && CI=true npm test -- --watchAll=false
+cd backend  && go test ./... -count=1                   # unidade
+cd frontend && CI=true npm test -- --watchAll=false     # frontend
 ```
 
 **Resultado esperado:** todos os pacotes Go em `ok` e as duas suítes do
-frontend em `PASS`. Os testes que dependem do Postgres são ignorados
-automaticamente (`SKIP`) quando `DATABASE_URL` não está definida, então
-`go test ./...` funciona em qualquer máquina, com ou sem Docker.
+frontend em `PASS`.
+
+### Onde os testes moram
+
+Os testes do backend ficam em `backend/tests/`, espelhando as camadas da
+arquitetura e separados pelo critério que muda a forma de rodar — precisa de
+banco ou não:
+
+```
+backend/tests/
+├── apoio/          montagem compartilhada pelos dois níveis
+├── unidade/        entities, usecases, repository, delivery — sem banco
+└── integracao/     repository — exige PostgreSQL no ar
+```
+
+Todo arquivo em `integracao/` começa com `//go:build integracao`. Sem a tag ele
+não entra na compilação, então `go test ./...` roda em qualquer máquina, com ou
+sem Docker, e não fica escondendo `SKIP` no meio da saída. Com a tag, os testes
+exigem `DATABASE_URL` e falham com mensagem clara se ela não estiver definida.
+
+O detalhamento — em que pasta entra cada tipo de teste novo, e as duas
+restrições do Go que explicam o formato — está em
+[`backend/tests/README.md`](backend/tests/README.md).
+
+`make verificar` roda `go vet` nas duas configurações, para que o código atrás
+da tag não fique sem análise estática.
 
 A evidência da execução registrada pela equipe está em
 [`docs/validacao-e2.md`](docs/validacao-e2.md).
@@ -250,12 +281,16 @@ DriveFlow/
 │   ├── cmd/app/main.go       monta as camadas e sobe o servidor
 │   ├── configs/              leitura da configuração de ambiente
 │   ├── pkg/                  utilitários genéricos (geração de id)
-│   └── internal/
-│       ├── entities/         domínio: modelos, erros e regras de tarifa
-│       ├── usecases/         regras de negócio e a porta do repositório
-│       ├── repository/       repositório em memória e PostgreSQL
-│       │   └── migrations/   schema versionado (NNNN_descricao.up.sql)
-│       └── delivery/http/    rotas HTTP e tradução de erros
+│   ├── internal/
+│   │   ├── entities/         domínio: modelos, erros e regras de tarifa
+│   │   ├── usecases/         regras de negócio e a porta do repositório
+│   │   ├── repository/       repositório em memória e PostgreSQL
+│   │   │   └── migrations/   schema versionado (NNNN_descricao.up.sql)
+│   │   └── delivery/http/    rotas HTTP e tradução de erros
+│   └── tests/                testes, espelhando as camadas
+│       ├── apoio/            montagem compartilhada pelos dois níveis
+│       ├── unidade/          sem banco (entra no `make testar`)
+│       └── integracao/       exige PostgreSQL (tag `integracao`)
 ├── frontend/                 SPA em React
 │   ├── nginx.conf            serve a SPA e repassa /api para a API
 │   └── src/
