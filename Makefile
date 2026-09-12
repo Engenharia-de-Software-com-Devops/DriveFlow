@@ -17,7 +17,7 @@ testar-backend: ## Testes do backend (os de banco sao ignorados sem DATABASE_URL
 	cd backend && go test ./... -count=1
 
 testar-frontend: ## Testes do frontend
-	cd frontend && CI=true npm test -- --watchAll=false
+	cd frontend && npm test -- --run
 
 testar-integracao: ## Testes de integracao contra o postgres do compose
 	docker compose up -d db
@@ -31,7 +31,7 @@ api: ## Sobe a api local (em memoria, sem precisar de banco)
 	cd backend && go run .
 
 web: ## Sobe o frontend local em modo desenvolvimento
-	cd frontend && npm start
+	cd frontend && npm run dev
 
 subir: ## Sobe os 3 containers (db, api, web)
 	docker compose up --build -d

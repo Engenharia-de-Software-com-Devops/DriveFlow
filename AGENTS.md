@@ -7,7 +7,7 @@
 - Run Postgres integration tests: `make testar-integracao`; it starts only the `db` Compose service and sets `DATABASE_URL` for the Go tests.
 - Check backend formatting and static analysis: `make verificar`. `gofmt -l .` only reports unformatted files, so run `cd backend && gofmt -w <files>` before rechecking when it reports output.
 - Run a focused Go test from `backend/`: `go test ./internal/locacao -run TestName -count=1`.
-- Run a focused frontend test from `frontend/`: `CI=true npm test -- --watchAll=false --testPathPattern=src/api.test.js`.
+- Run frontend tests from `frontend/`: `npm test -- --run`; focus a file with `npm test -- src/App.test.tsx`.
 - Start the full production-like stack: `docker compose up --build`; start hot-reload containers: `docker compose -f docker-compose.dev.yml up --build`.
 
 ## Architecture
