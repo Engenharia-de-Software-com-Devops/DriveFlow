@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
-import { listarFrota, verificarSaude, type Empresa, type Veiculo } from './api';
+import { listarFrota, listarLocacoes, verificarSaude, type Empresa, type Locacao, type Veiculo } from './api';
 import CadastroEmpresa from './componentes/CadastroEmpresa';
-import Frota from './componentes/Frota';
+import Navbar from './componentes/Navbar';
+import PaginaFrota from './paginas/PaginaFrota';
+import PaginaReservas from './paginas/PaginaReservas';
 
 const CHAVE_EMPRESA = 'driveflow:empresa';
 
@@ -16,8 +19,10 @@ function empresaSalva(): Empresa | null {
 }
 
 export default function App() {
+  const navigate = useNavigate();
   const [empresa, setEmpresa] = useState<Empresa | null>(empresaSalva);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [locacoes, setLocacoes] = useState<Locacao[]>([]);
   const [apiNoAr, setApiNoAr] = useState<boolean | null>(null);
   const [erro, setErro] = useState('');
 
@@ -31,7 +36,12 @@ export default function App() {
     if (!empresa) return;
     setErro('');
     try {
-      setVeiculos(await listarFrota(empresa.id));
+      const [frota, reservas] = await Promise.all([
+        listarFrota(empresa.id),
+        listarLocacoes(empresa.id),
+      ]);
+      setVeiculos(frota);
+      setLocacoes(reservas);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Falha inesperada.');
     }
@@ -44,45 +54,81 @@ export default function App() {
   function selecionarEmpresa(nova: Empresa) {
     window.localStorage.setItem(CHAVE_EMPRESA, JSON.stringify(nova));
     setEmpresa(nova);
+    navigate('/frota');
   }
 
   function trocarEmpresa() {
     window.localStorage.removeItem(CHAVE_EMPRESA);
     setEmpresa(null);
     setVeiculos([]);
+    setLocacoes([]);
+    navigate('/');
   }
 
   return (
-    <div className="app">
-      <header>
-        <h1>DriveFlow</h1>
-        <p>Plataforma de locacao de veiculos para empresas</p>
+    <div className="app-shell">
+      <Navbar empresa={empresa} onSair={trocarEmpresa} />
+
+      <div className="app-conteudo">
         {apiNoAr === false && (
-          <p role="alert" className="erro">
+          <p role="alert" className="erro aviso-api">
             API indisponivel. Suba o backend antes de usar a aplicacao.
           </p>
         )}
-      </header>
 
-      <main>
-        {!empresa ? (
-          <CadastroEmpresa aoCadastrar={selecionarEmpresa} />
-        ) : (
-          <>
-            <section className="cartao empresa-ativa">
-              <h2>{empresa.nome}</h2>
-              <p className="ajuda">CNPJ {empresa.cnpj}</p>
-              <button type="button" onClick={trocarEmpresa}>
-                Trocar de empresa
-              </button>
-            </section>
-
-            {erro && <p role="alert" className="erro">{erro}</p>}
-
-            <Frota empresaId={empresa.id} veiculos={veiculos} aoAtualizar={carregar} />
-          </>
-        )}
-      </main>
+        <main>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                empresa ? (
+                  <Navigate to="/frota" replace />
+                ) : (
+                  <div className="conteudo-central">
+                    <CadastroEmpresa aoCadastrar={selecionarEmpresa} />
+                  </div>
+                )
+              }
+            />
+            <Route
+              path="/frota"
+              element={
+                empresa ? (
+                  <>
+                    {erro && <p role="alert" className="erro">{erro}</p>}
+                    <PaginaFrota
+                      empresaId={empresa.id}
+                      veiculos={veiculos}
+                      aoAtualizar={carregar}
+                    />
+                  </>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/reservas"
+              element={
+                empresa ? (
+                  <>
+                    {erro && <p role="alert" className="erro">{erro}</p>}
+                    <PaginaReservas
+                      empresaId={empresa.id}
+                      veiculos={veiculos}
+                      locacoes={locacoes}
+                      aoAtualizar={carregar}
+                    />
+                  </>
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
     </div>
   );
 }
