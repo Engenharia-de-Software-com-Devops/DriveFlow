@@ -1,22 +1,17 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import * as api from './api'
 
 describe('App', () => {
-  it('renders the initial counter value', () => {
-    render(<App />)
-
-    expect(screen.getByRole('button', { name: 'Count is 0' })).toBeInTheDocument()
+  beforeEach(() => {
+    window.localStorage.clear()
+    vi.spyOn(api, 'verificarSaude').mockResolvedValue({ status: 'ok' })
   })
 
-  it('increments the counter for each click', async () => {
-    const user = userEvent.setup()
+  it('pede o cadastro da empresa quando nenhuma esta selecionada', async () => {
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: 'Count is 0' }))
-    await user.click(screen.getByRole('button', { name: 'Count is 1' }))
-
-    expect(screen.getByRole('button', { name: 'Count is 2' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Cadastrar empresa' })).toBeInTheDocument()
   })
 })
