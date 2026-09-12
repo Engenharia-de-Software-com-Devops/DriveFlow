@@ -42,7 +42,7 @@ Três containers, como levantado no diagnóstico do Encontro 1:
 | ------ | ---------- | ----- |
 | `web`  | React 19 (Create React App), servido por nginx | `frontend/` |
 | `api`  | Go 1.24, biblioteca padrão + `lib/pq` | `backend/` |
-| `db`   | PostgreSQL 16, migrations versionadas | `backend/internal/armazenamento/migracoes/` |
+| `db`   | PostgreSQL 16, migrations versionadas | `backend/internal/repository/migrations/` |
 
 ---
 
@@ -80,7 +80,7 @@ Dois terminais.
 
 ```bash
 cd backend
-go run .
+go run ./cmd/app
 # api ouvindo na porta 8080
 ```
 
@@ -88,7 +88,7 @@ Para usar um PostgreSQL de verdade, defina `DATABASE_URL` antes de subir. A API
 aplica as migrations pendentes sozinha na inicialização:
 
 ```bash
-DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable" go run .
+DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable" go run ./cmd/app
 ```
 
 **Terminal 2 — frontend:**
@@ -117,7 +117,7 @@ docker compose up -d db
 ```bash
 cd backend
 export DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable"
-go run .
+go run ./cmd/app
 # api ouvindo na porta 8080
 ```
 
@@ -246,13 +246,16 @@ Códigos de erro:
 
 ```
 DriveFlow/
-├── backend/                  API em Go
-│   ├── main.go               escolhe o armazenamento e sobe o servidor
+├── backend/                  API em Go (clean architecture)
+│   ├── cmd/app/main.go       monta as camadas e sobe o servidor
+│   ├── configs/              leitura da configuração de ambiente
+│   ├── pkg/                  utilitários genéricos (geração de id)
 │   └── internal/
-│       ├── api/              rotas HTTP e tradução de erros
-│       ├── locacao/          domínio: modelo, regras, tarifa
-│       └── armazenamento/    repositório em memória e PostgreSQL
-│           └── migracoes/    schema versionado (NNNN_descricao.up.sql)
+│       ├── entities/         domínio: modelos, erros e regras de tarifa
+│       ├── usecases/         regras de negócio e a porta do repositório
+│       ├── repository/       repositório em memória e PostgreSQL
+│       │   └── migrations/   schema versionado (NNNN_descricao.up.sql)
+│       └── delivery/http/    rotas HTTP e tradução de erros
 ├── frontend/                 SPA em React
 │   ├── nginx.conf            serve a SPA e repassa /api para a API
 │   └── src/
@@ -282,7 +285,7 @@ Cada gargalo levantado no Encontro 1 tem endereço no código:
 
 | Gargalo (E1) | Onde foi endereçado nesta base |
 | ------------ | ------------------------------ |
-| Build e deploy manual, sem migrations versionadas | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `backend/internal/armazenamento/migracoes/` |
+| Build e deploy manual, sem migrations versionadas | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `backend/internal/repository/migrations/` |
 | Ausência de testes automatizados entre api, web e db | 48 casos de teste automatizados: domínio, API HTTP, integração com Postgres e interface React |
 | Sem observabilidade compartilhada | Log estruturado em JSON na API e `HEALTHCHECK` nos containers |
 

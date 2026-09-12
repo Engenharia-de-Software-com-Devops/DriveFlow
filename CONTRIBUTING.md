@@ -56,10 +56,12 @@ Depois, abra o Pull Request para `dev`.
 
 | Quero mudar... | Mexo em |
 | -------------- | ------- |
-| Regra de negócio (tarifa, conflito, validação) | `backend/internal/locacao/` |
-| Rota ou código HTTP | `backend/internal/api/` |
-| Schema do banco | `backend/internal/armazenamento/migracoes/` (arquivo novo) |
-| Consulta SQL | `backend/internal/armazenamento/postgres.go` |
+| Modelo de domínio, erro de domínio ou regra de tarifa | `backend/internal/entities/` |
+| Regra de negócio (conflito, validação, fluxo do contrato) | `backend/internal/usecases/` |
+| Rota ou código HTTP | `backend/internal/delivery/http/` |
+| Schema do banco | `backend/internal/repository/migrations/` (arquivo novo) |
+| Consulta SQL | `backend/internal/repository/postgres_repo.go` |
+| Montagem das camadas (injeção de dependência) | `backend/cmd/app/main.go` |
 | Tela | `frontend/src/componentes/` |
 | Chamada à API | `frontend/src/api.js` |
 | Containers | `docker-compose.yml`, `*/Dockerfile` |
