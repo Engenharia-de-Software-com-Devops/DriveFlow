@@ -1,0 +1,37 @@
+# ---- Node / Frontend ----
+node_modules/
+/frontend/build/
+/frontend/coverage/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Go / Backend ----
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/backend/bin/
+/backend/vendor/
+
+# ---- Variaveis de ambiente ----
+.env
+.env.local
+.env.*.local
+
+# ---- Editores / IDEs ----
+.vscode/
+.idea/
+*.swp
+
+# ---- Windows / OneDrive / macOS ----
+desktop.ini
+Thumbs.db
+ehthumbs.db
+$RECYCLE.BIN/
+.DS_Store
