@@ -36,6 +36,7 @@
 
 ## Workflow
 
+- After completing any change, run `make verificar` and `make testar`.
 - Before a PR, run `make verificar` and `make testar`; changes to behavior require tests. Also run `make testar-integracao` when the change touches SQL, a migration, or the repository.
 - Work branches target `dev`. Do not push directly to `main`, `prod`, or `homo`; use a PR reviewed by another contributor.
 
@@ -43,4 +44,5 @@
 
 - Ask the developer when requirements or intended behavior are unclear; do not guess or assume.
 - Follow TDD: write tests for the expected behavior and edge cases before implementation.
+- Write code identifiers, including functions, variables, types, classes, new filenames, and comments, in English. Preserve existing domain names and commands unless a change is required.
 - Do not run Git operations, including commits, automatically. The developer performs them unless they explicitly request otherwise.
