@@ -1,22 +1,52 @@
 name: CI
 
+# Esteira unica: cada etapa so comeca quando a anterior termina com sucesso.
+# A ordem vai do feedback mais barato para o mais caro, entao um erro de
+# formatacao falha em segundos sem gastar minutos subindo Postgres e Docker.
+#
+#   1. analise estatica -> 2. seguranca -> 3. testes de unidade
+#   -> 4. testes de integracao -> 5. build -> 6. smoke test da stack docker
+
 on:
   push:
     branches: [dev, main]
   pull_request:
     branches: [dev, main]
 
+# Um push novo na mesma branch cancela a esteira antiga, que ja esta obsoleta.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  DATABASE_URL_CI: postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable
+
 jobs:
-  verificar:
-    name: Backend — formatação e análise
+  # ---- 1. Analise estatica -------------------------------------------------
+  analise-estatica:
+    name: 1. Análise estática
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Historico completo para comparar as migrations com a branch alvo.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: gofmt
         working-directory: backend
@@ -28,6 +58,10 @@ jobs:
             exit 1
           fi
 
+      - name: go.mod e go.sum organizados
+        working-directory: backend
+        run: go mod tidy -diff
+
       - name: go vet
         working-directory: backend
         run: go vet ./...
@@ -38,87 +72,192 @@ jobs:
         working-directory: backend
         run: go vet -tags=integracao ./...
 
-  testar-backend:
-    name: Backend — testes de unidade (tests/unidade)
+      - name: staticcheck
+        working-directory: backend
+        run: |
+          go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+          go run honnef.co/go/tools/cmd/staticcheck@latest -tags=integracao ./...
+
+      # As camadas internas nao podem depender de delivery nem de repository.
+      - name: Direção das dependências entre camadas
+        working-directory: backend
+        run: |
+          fail=0
+          check() {
+            pkg=$1; shift
+            for forbidden in "$@"; do
+              if go list -deps "./internal/$pkg" | grep -q "^driveflow/backend/internal/$forbidden"; then
+                echo "internal/$pkg não pode importar internal/$forbidden"
+                fail=1
+              fi
+            done
+          }
+          check entities usecases delivery repository
+          check usecases delivery repository
+          check repository usecases delivery
+          exit $fail
+
+      - name: Toda migration up tem a down correspondente
+        working-directory: backend/internal/repository/migrations
+        run: |
+          fail=0
+          for up in *.up.sql; do
+            down="${up%.up.sql}.down.sql"
+            [ -f "$down" ] || { echo "Falta $down"; fail=1; }
+          done
+          for down in *.down.sql; do
+            up="${down%.down.sql}.up.sql"
+            [ -f "$up" ] || { echo "Falta $up"; fail=1; }
+          done
+          exit $fail
+
+      # Migrations ja aplicadas nunca sao editadas: so arquivos novos entram.
+      - name: Migrations existentes não foram alteradas
+        if: github.event_name == 'pull_request'
+        run: |
+          changed=$(git diff --name-only --diff-filter=MDR \
+            "origin/${{ github.base_ref }}...HEAD" -- backend/internal/repository/migrations)
+          if [ -n "$changed" ]; then
+            echo "Migrations existentes foram alteradas ou removidas:"
+            echo "$changed"
+            echo "Crie uma nova migration NNNN_descricao.up.sql/.down.sql."
+            exit 1
+          fi
+
+      - name: Instalar dependências do frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Checagem de tipos (tsc)
+        working-directory: frontend
+        run: npx tsc -b
+
+      - name: Arquivos do Docker Compose válidos
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.dev.yml config -q
+
+  # ---- 2. Seguranca ----------------------------------------------------------
+  seguranca:
+    name: 2. Segurança das dependências
     runs-on: ubuntu-24.04
+    needs: analise-estatica
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-
-      - name: Baixar dependências
-        working-directory: backend
-        run: go mod download
-
-      - name: Rodar testes
-        working-directory: backend
-        run: go test ./... -count=1
-
-  testar-frontend:
-    name: Frontend — testes
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Instalar dependências
+      # Aponta vulnerabilidades conhecidas que o codigo realmente alcanca,
+      # tanto nos modulos quanto na biblioteca padrao da versao de Go usada.
+      - name: govulncheck
+        working-directory: backend
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      # So as dependencias que vao para o bundle de producao.
+      - name: npm audit
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  # ---- 3. Testes de unidade --------------------------------------------------
+  testes-unidade:
+    name: 3. Testes de unidade
+    runs-on: ubuntu-24.04
+    needs: seguranca
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # -race pega acesso concorrente sem sincronizacao (ex.: repositorio em
+      # memoria); -shuffle expoe testes que dependem da ordem de execucao.
+      # Os testes ficam em tests/, entao -coverpkg mede o codigo de internal/.
+      - name: Backend (race + shuffle + cobertura)
+        working-directory: backend
+        run: |
+          go test ./... -count=1 -race -shuffle=on \
+            -coverpkg=./internal/...,./pkg/... -coverprofile=cobertura-unidade.out
+          echo "### Cobertura do backend (unidade)" >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -func=cobertura-unidade.out | tail -1 >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Instalar dependências do frontend
         working-directory: frontend
         run: npm ci
 
-      - name: Rodar testes
+      - name: Frontend
         working-directory: frontend
         env:
           CI: true
         run: npm test -- --run
 
-  testar-integracao:
-    name: Backend — testes de integração (Postgres)
+  # ---- 4. Testes de integracao -----------------------------------------------
+  testes-integracao:
+    name: 4. Testes de integração (Postgres)
     runs-on: ubuntu-24.04
+    needs: testes-unidade
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
       - name: Subir Postgres
-        run: docker compose up -d db
-
-      - name: Aguardar banco
-        run: |
-          for i in $(seq 1 30); do
-            docker compose exec -T db pg_isready -U driveflow -d driveflow && exit 0
-            sleep 2
-          done
-          exit 1
+        run: docker compose up -d --wait db
 
       # A tag `integracao` e obrigatoria: sem ela estes testes nao compilam e o
       # job passaria verde sem nunca ter falado com o Postgres.
       - name: Rodar testes com DATABASE_URL
         working-directory: backend
         env:
-          DATABASE_URL: postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable
-        run: go test -tags=integracao ./tests/integracao/... -count=1 -v
+          DATABASE_URL: ${{ env.DATABASE_URL_CI }}
+        run: go test -tags=integracao ./tests/integracao/... -count=1 -race -v
 
+      - name: Logs do Postgres
+        if: failure()
+        run: docker compose logs db
+
+      - name: Derrubar Postgres
+        if: always()
+        run: docker compose down -v
+
+  # ---- 5. Build --------------------------------------------------------------
   build:
-    name: Build — api e web
+    name: 5. Build — api e web
     runs-on: ubuntu-24.04
-    needs: [testar-backend, testar-frontend]
+    needs: testes-integracao
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
       - name: Build da api
@@ -127,7 +266,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -138,3 +277,51 @@ jobs:
       - name: Build do frontend
         working-directory: frontend
         run: npm run build
+
+  # ---- 6. Smoke test da stack completa ---------------------------------------
+  smoke-docker:
+    name: 6. Smoke test — docker compose
+    runs-on: ubuntu-24.04
+    needs: build
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builda as imagens de producao e so segue quando os healthchecks passam:
+      # db aceitando conexoes e api respondendo /health com as migrations aplicadas.
+      - name: Subir db, api e web
+        run: docker compose up --build -d --wait --wait-timeout 180
+
+      # Tudo passa pelo nginx do web, como no navegador: valida o proxy relativo
+      # de /api e /health, as migrations e a gravacao real no Postgres.
+      - name: Requisições pela stack
+        run: |
+          set -euo pipefail
+          base=http://localhost:3000
+
+          echo "GET / (SPA)"
+          curl -fsS --retry 10 --retry-all-errors --retry-delay 2 "$base/" | grep -q '<div id="root">'
+
+          echo "GET /rota-inexistente (fallback da SPA)"
+          curl -fsS "$base/rota-inexistente" | grep -q '<div id="root">'
+
+          echo "GET /health"
+          curl -fsS "$base/health"
+
+          echo "POST /api/empresas"
+          company=$(curl -fsS -X POST "$base/api/empresas" \
+            -H 'Content-Type: application/json' \
+            -d "{\"nome\":\"Smoke CI\",\"cnpj\":\"$(date +%s%N | cut -c1-14)\"}")
+          echo "$company"
+          company_id=$(echo "$company" | jq -er '.id')
+
+          echo "GET /api/empresas/$company_id/veiculos"
+          curl -fsS "$base/api/empresas/$company_id/veiculos"
+
+      - name: Logs dos containers
+        if: failure()
+        run: docker compose logs
+
+      - name: Derrubar stack
+        if: always()
+        run: docker compose down -v
