@@ -32,19 +32,19 @@ export default function App() {
       .catch(() => setApiNoAr(false));
   }, []);
 
+  // State is only updated inside the promise callbacks, so calling this from an
+  // effect never triggers a synchronous re-render.
   const carregar = useCallback(async () => {
     if (!empresa) return;
-    setErro('');
-    try {
-      const [frota, reservas] = await Promise.all([
-        listarFrota(empresa.id),
-        listarLocacoes(empresa.id),
-      ]);
-      setVeiculos(frota);
-      setLocacoes(reservas);
-    } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Falha inesperada.');
-    }
+    await Promise.all([listarFrota(empresa.id), listarLocacoes(empresa.id)])
+      .then(([frota, reservas]) => {
+        setErro('');
+        setVeiculos(frota);
+        setLocacoes(reservas);
+      })
+      .catch((falha) => {
+        setErro(falha instanceof Error ? falha.message : 'Falha inesperada.');
+      });
   }, [empresa]);
 
   useEffect(() => {
