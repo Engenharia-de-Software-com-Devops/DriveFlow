@@ -1,5 +1,8 @@
 FROM golang:1.24-alpine
 
+ARG UID=1000
+ARG GID=1000
+
 WORKDIR /app
 
 RUN apk add --no-cache wget \
@@ -16,6 +19,14 @@ EXPOSE 8080
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
+
+# O processo usa o mesmo UID/GID do host para preservar a posse dos bind mounts.
+RUN mkdir -p /tmp/go-build && \
+    chown -R ${UID}:${GID} /app /go /tmp/go-build
+
+ENV GOCACHE=/tmp/go-build
+
+USER ${UID}:${GID}
 
 # Air recompila e reinicia a API quando os arquivos Go montados pelo host mudam.
 CMD ["air", "--build.cmd", "go build -o /tmp/air/api .", "--build.bin", "/tmp/air/api"]

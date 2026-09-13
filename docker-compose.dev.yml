@@ -26,14 +26,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${LOCAL_UID:-1000}
+        GID: ${LOCAL_GID:-1000}
     container_name: driveflow-dev-api
     environment:
       API_PORT: 8080
       DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
     volumes:
       - ./backend:/app
-      - modulos_go:/go/pkg/mod
-      - cache_go:/root/.cache/go-build
     depends_on:
       db:
         condition: service_healthy
@@ -44,15 +45,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${LOCAL_UID:-1000}
+        GID: ${LOCAL_GID:-1000}
     container_name: driveflow-dev-web
     environment:
       HOST: 0.0.0.0
       CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-      REACT_APP_API_URL: ""
     volumes:
       - ./frontend:/app
-      - modulos_node:/app/node_modules
     depends_on:
       api:
         condition: service_healthy
@@ -61,6 +62,3 @@ services:
 
 volumes:
   dados_postgres_dev:
-  modulos_go:
-  cache_go:
-  modulos_node:
