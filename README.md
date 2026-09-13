@@ -95,10 +95,23 @@ DATABASE_URL="postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=di
 
 ```bash
 cd frontend
-npm install
-npm start
+npm ci
+npm run dev
 # abre http://localhost:3000
 ```
+
+### Desenvolvimento com hot reload nos containers
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Defina `LOCAL_UID` e `LOCAL_GID` no `.env` para manter a posse correta dos arquivos
+gerados pelos bind mounts. Use `id -u` e `id -g` para obter os valores.
+
+Os módulos Node ficam em `frontend/node_modules`, para que o LSP local resolva
+imports e tipos. Os caches Go permanecem no filesystem interno do container,
+pois não são necessários para o LSP executado no host.
 
 ### Opção C — só o banco em container, API e frontend locais
 
@@ -125,8 +138,8 @@ go run ./cmd/app
 
 ```bash
 cd frontend
-npm install
-npm start
+npm ci
+npm run dev
 # abre http://localhost:3000
 ```
 
