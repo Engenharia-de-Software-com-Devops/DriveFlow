@@ -111,6 +111,35 @@ Regras descritas na seção "Regras de negócio" do README e cobertas por
 
 ---
 
+## Registro 5 — Auditoria do pipeline de CI
+
+**Prompt**
+> Verifique o que falta no pipeline de CI (`.github/workflows/ci.yml`) frente
+> ao checklist da Atividade 3: instalação, teste real, build, pipeline verde,
+> log de falha explicado, correção aplicada, bloqueio de merge em falha e
+> registro de IA.
+
+**Resposta (resumo)**
+Apontou que o workflow instalava e testava mas não buildava nada; que nenhuma
+branch tinha proteção configurada no GitHub (confirmado consultando a API,
+não por suposição), então uma falha no CI não impedia merge; e que o README
+ainda instruía `CI=true npm test -- --watchAll=false` (sintaxe do CRA), a
+mesma flag que já havia quebrado o pipeline de verdade na migração para Vite
+(execução com falha real, não simulada).
+
+**Decisão da equipe**
+Aceita. Adicionado o job `build` (compila a api e o bundle do frontend, só
+após os testes passarem), corrigido README e Makefile para a sintaxe atual do
+`vitest`, e configurada a exigência dos cinco status checks em `main` e `dev`
+antes de permitir merge.
+
+**Evidência de validação**
+`go build ./cmd/app` e `npm run build` executados localmente com sucesso
+antes do commit; pipeline verde e o incidente real de falha documentados em
+[`validacao-e3.md`](validacao-e3.md).
+
+---
+
 ## O que a equipe não delegou à IA
 
 Conforme a validação humana exigida no diagnóstico do E1:

@@ -47,9 +47,9 @@ frota e locação, antes de qualquer deploy.
 | --------------- | ---- |
 | Os 3 containers sobem com um comando, com healthcheck e ordem de dependência | `docker-compose.yml` |
 | Build reproduzível: binário estático em dois estágios; `npm ci` fixado no lockfile | `backend/Dockerfile`, `frontend/Dockerfile` |
-| Schema versionado em arquivos `NNNN_descricao.up.sql`, com `.down.sql` para rollback | `backend/internal/armazenamento/migracoes/` |
-| Migrations aplicadas automaticamente na subida da API, cada uma na própria transação junto do registro em `schema_migracoes` | `backend/internal/armazenamento/migracao.go` |
-| Aplicação idempotente: reiniciar o container não reaplica nada | `TestAplicarMigracoesEhIdempotente` |
+| Schema versionado em arquivos `NNNN_descricao.up.sql`, com `.down.sql` para rollback | `backend/internal/repository/migrations/` |
+| Migrations aplicadas automaticamente na subida da API, cada uma na própria transação junto do registro em `schema_migracoes` | `backend/internal/repository/migration.go` |
+| Aplicação idempotente: reiniciar o container não reaplica nada | `TestApplyMigrationsIsIdempotent` |
 
 Efeito prático: o passo "aplicar o `.sql` na mão no servidor" deixou de existir.
 Uma migration fora de ordem não tem mais como acontecer, porque a ordem é o
@@ -70,9 +70,10 @@ Distribuição dos 48 casos automatizados:
 
 | Camada | Casos | O que cobre |
 | ------ | ----- | ----------- |
-| `backend/internal/locacao` | 27 | Regras de tarifa, conflito de reserva, isolamento entre tenants, ciclo do contrato |
-| `backend/internal/api` | 5 | Rotas HTTP e tradução de erro de domínio em status |
-| `backend/internal/armazenamento` | 6 | Migrations versionadas e integração real com o PostgreSQL |
+| `backend/internal/entities` | 16 | Regras de tarifa e sobreposição de períodos |
+| `backend/internal/usecases` | 11 | Conflito de reserva, isolamento entre tenants, ciclo do contrato |
+| `backend/internal/delivery/http` | 5 | Rotas HTTP e tradução de erro de domínio em status |
+| `backend/internal/repository` | 6 | Migrations versionadas e integração real com o PostgreSQL |
 | `frontend/src` | 10 | Cliente HTTP e comportamento da interface |
 
 O conflito de reserva é barrado em **duas** camadas: na regra de domínio e na
@@ -86,9 +87,9 @@ Este era o gargalo cultural e o E2 entrega apenas a fundação técnica dele:
 
 | O que foi feito | Onde |
 | --------------- | ---- |
-| Log estruturado em JSON, com método, rota e duração de cada requisição | `backend/main.go`, `backend/internal/api/servidor.go` |
+| Log estruturado em JSON, com método, rota e duração de cada requisição | `backend/cmd/app/main.go`, `backend/internal/delivery/http/server.go` |
 | `HEALTHCHECK` nos containers `api` e `web`, e `pg_isready` no `db` | `*/Dockerfile`, `docker-compose.yml` |
-| `GET /health` reportando estado e versão | `backend/internal/api/servidor.go` |
+| `GET /health` reportando estado e versão | `backend/internal/delivery/http/server.go` |
 | Conhecimento do fluxo fora da cabeça de uma pessoa: README, `CONTRIBUTING.md` e fluxo de branches documentado | `README.md`, `CONTRIBUTING.md`, `docs/fluxo-git.md` |
 
 O que **ainda falta**: painel único com as métricas dos 3 containers e dono
