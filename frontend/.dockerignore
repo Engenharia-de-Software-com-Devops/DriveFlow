@@ -5,3 +5,6 @@ coverage/
 Dockerfile
 Dockerfile.dev
 .dockerignore
+**/*.test.ts
+**/*.test.tsx
+src/test/
