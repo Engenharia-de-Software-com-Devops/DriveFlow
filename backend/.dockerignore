@@ -3,3 +3,6 @@ Dockerfile
 bin/
 vendor/
 *_test.go
+Dockerfile.dev
+tests/
+.env*

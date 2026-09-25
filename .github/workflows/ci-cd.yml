@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 # Esteira unica: cada etapa so comeca quando a anterior termina com sucesso.
 # A ordem vai do feedback mais barato para o mais caro, entao um erro de
@@ -6,6 +6,10 @@ name: CI
 #
 #   1. analise estatica -> 2. seguranca -> 3. testes de unidade
 #   -> 4. testes de integracao -> 5. build -> 6. smoke test da stack docker
+#
+# Etapas 1 a 6 sao o CI e rodam em todo push e PR. A etapa 7 e o CD: so em
+# push na main, publica no Docker Hub as mesmas imagens que o smoke test
+# validou (docker save/load), sem rebuild.
 
 on:
   push:
@@ -140,6 +144,7 @@ jobs:
         run: |
           docker compose -f docker-compose.yml config -q
           docker compose -f docker-compose.dev.yml config -q
+          docker compose -f docker-compose.prod.yml config -q
 
   # ---- 2. Seguranca ----------------------------------------------------------
   seguranca:
@@ -318,6 +323,19 @@ jobs:
           echo "GET /api/empresas/$company_id/veiculos"
           curl -fsS "$base/api/empresas/$company_id/veiculos"
 
+      # O projeto se chama `driveflow`, entao o compose nomeia as imagens
+      # driveflow-api e driveflow-web.
+      - name: Exportar as imagens validadas
+        run: docker save driveflow-api driveflow-web | gzip > imagens.tar.gz
+
+      # Entrada do CD e tambem artefato de entrega alternativo:
+      #   gunzip -c imagens.tar.gz | docker load
+      - uses: actions/upload-artifact@v4
+        with:
+          name: imagens-docker
+          path: imagens.tar.gz
+          retention-days: 30
+
       - name: Logs dos containers
         if: failure()
         run: docker compose logs
@@ -325,3 +343,37 @@ jobs:
       - name: Derrubar stack
         if: always()
         run: docker compose down -v
+
+  # ---- 7. CD: publicacao no Docker Hub ---------------------------------------
+  publicar:
+    name: 7. CD — publicar no Docker Hub
+    runs-on: ubuntu-24.04
+    needs: smoke-docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: imagens-docker
+
+      - name: Carregar as imagens validadas no CI
+        run: gunzip -c imagens.tar.gz | docker load
+
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Tag rastreavel (SHA do commit) mais latest, que o
+      # docker-compose.prod.yml usa por padrao.
+      - name: Tag e push
+        env:
+          NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          for servico in api web; do
+            for tag in ${{ github.sha }} latest; do
+              docker tag driveflow-$servico $NAMESPACE/driveflow-$servico:$tag
+              docker push $NAMESPACE/driveflow-$servico:$tag
+            done
+          done

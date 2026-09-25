@@ -8,7 +8,7 @@ falha real já bloqueou (e foi corrigida) antes de chegar em `dev`.
 
 ## 1. Workflow versionado
 
-[`​.github/workflows/ci.yml`](../.github/workflows/ci.yml) dispara em `push` e
+[`​.github/workflows/ci.yml`](../.github/workflows/ci-cd.yml) dispara em `push` e
 `pull_request` para `dev` e `main`, com cinco jobs:
 
 | Job | O que roda |
