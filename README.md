@@ -14,7 +14,7 @@ DevOps** (PG2305-04-Z251, Turma 4 — Z251).
 | Jaime      | 2650365   |
 | Marcos     | 2651654   |
 | Ricardo    | 2650160   |
-
+| Helislana  | 2650139   |
 ---
 
 ## Arquitetura
@@ -79,14 +79,16 @@ do banco).
 
 ### A partir das imagens publicadas (Docker Hub)
 
-O CD publica as imagens já validadas pelo CI a cada merge na `main`:
-[`jaimegdj/driveflow-api`](https://hub.docker.com/r/jaimegdj/driveflow-api) e
-[`jaimegdj/driveflow-web`](https://hub.docker.com/r/jaimegdj/driveflow-web),
-com as tags `latest` e o SHA do commit. Nada é buildado localmente:
+O CD publica as imagens já validadas pelo CI a cada merge na `main`, no
+repositório público
+[`jaimegdj/driveflow`](https://hub.docker.com/r/jaimegdj/driveflow). As duas
+imagens ficam no mesmo repositório, com o serviço no prefixo da tag:
+`api-latest` e `web-latest`, mais `api-<sha>` e `web-<sha>` para cada commit.
+Nada é buildado localmente:
 
 ```bash
-docker pull jaimegdj/driveflow-api:latest
-docker pull jaimegdj/driveflow-web:latest
+docker pull jaimegdj/driveflow:api-latest
+docker pull jaimegdj/driveflow:web-latest
 docker compose -f docker-compose.prod.yml up -d
 ```
 
@@ -252,7 +254,7 @@ Cada etapa só começa quando a anterior passa.
 | CI | 4. Testes de integração | testes do repositório contra o Postgres do compose | idem |
 | CI | 5. Build | binário da api e bundle do frontend | idem |
 | CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato | idem |
-| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca com o SHA do commit e `latest` e faz `docker push` no Docker Hub | só em push na `main`, depois do CI verde |
+| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
 
 O CD publica exatamente as imagens que o CI testou: não há rebuild. As
 credenciais ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`
