@@ -23,7 +23,7 @@ Três containers, como levantado no diagnóstico do Encontro 1:
 
 ```
                  ┌──────────────────┐
-  navegador ───► │  web   (React)   │  nginx :80  → publicado em :3000
+  navegador ───► │  web   (React)   │  nginx :8080 → publicado em :3000
                  │  nginx + bundle  │
                  └────────┬─────────┘
                           │  /api, /health (proxy interno)
@@ -40,7 +40,7 @@ Três containers, como levantado no diagnóstico do Encontro 1:
 
 | Camada | Tecnologia | Pasta |
 | ------ | ---------- | ----- |
-| `web`  | React 19 (Create React App), servido por nginx | `frontend/` |
+| `web`  | React 19 + TypeScript (Vite), servido por nginx | `frontend/` |
 | `api`  | Go 1.24, biblioteca padrão + `lib/pq` | `backend/` |
 | `db`   | PostgreSQL 16, migrations versionadas | `backend/internal/repository/migrations/` |
 
@@ -60,9 +60,14 @@ Escolha **um** dos caminhos:
 ### Opção A — os 3 containers (recomendada)
 
 ```bash
-cp .env.example .env      # ajuste a senha do banco antes de subir
+git clone https://github.com/Engenharia-de-Software-com-Devops/DriveFlow.git
+cd DriveFlow
 docker compose up --build
 ```
+
+O `.env` é opcional: sem ele, o compose usa os valores de exemplo. Para trocar
+senha ou portas, `cp .env.example .env` e edite (ver
+[Variáveis de ambiente](#variáveis-de-ambiente)).
 
 Quando os três containers estiverem no ar:
 
@@ -71,6 +76,32 @@ Quando os três containers estiverem no ar:
 
 Para parar: `docker compose down` (acrescente `-v` para apagar também os dados
 do banco).
+
+### A partir das imagens publicadas (Docker Hub)
+
+O CD publica as imagens já validadas pelo CI a cada merge na `main`, no
+repositório público
+[`jaimegdj/driveflow`](https://hub.docker.com/r/jaimegdj/driveflow). As duas
+imagens ficam no mesmo repositório, com o serviço no prefixo da tag:
+`api-latest` e `web-latest`, mais `api-<sha>` e `web-<sha>` para cada commit.
+Nada é buildado localmente:
+
+```bash
+docker pull jaimegdj/driveflow:api-latest
+docker pull jaimegdj/driveflow:web-latest
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Aplicação em <http://localhost:3000>. Para rodar uma versão específica (ou
+voltar para uma anterior), passe o SHA do commit:
+
+```bash
+DRIVEFLOW_TAG=<sha-do-commit> docker compose -f docker-compose.prod.yml up -d
+```
+
+Sem Docker Hub, as mesmas imagens estão no artefato `imagens-docker` de cada
+execução do workflow (aba *Actions*): baixe o zip, extraia e rode
+`gunzip -c imagens.tar.gz | docker load`.
 
 ### Opção B — execução local, sem Docker
 
@@ -204,15 +235,79 @@ da tag não fique sem análise estática.
 A evidência da execução registrada pela equipe está em
 [`docs/validacao-e2.md`](docs/validacao-e2.md).
 
-### Integração contínua
+---
 
-O workflow [`​.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em
-todo push e PR para `dev` e `main`: `verificar` (gofmt + vet), os três alvos
-de teste acima e um job de `build` (api e frontend), nessa ordem. `main` e
-`dev` exigem os cinco jobs verdes antes de permitir merge. Evidência de
+## Pipeline CI/CD
+
+Um único workflow, [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml),
+com as duas etapas separadas. As execuções ficam na aba
+[*Actions*](https://github.com/Engenharia-de-Software-com-Devops/DriveFlow/actions)
+do GitHub.
+
+Cada etapa só começa quando a anterior passa.
+
+| Etapa | Job | O que faz | Quando roda |
+| ----- | --- | --------- | ----------- |
+| CI | 1. Análise estática | `gofmt`, `go vet`, `staticcheck`, direção das dependências entre camadas, migrations, ESLint, `tsc` e validade dos arquivos de compose | todo push e PR para `dev` e `main` |
+| CI | 2. Segurança | `govulncheck` e `npm audit` | idem |
+| CI | 3. Testes de unidade | Go (`-race`, `-shuffle`, cobertura) e Vitest | idem |
+| CI | 4. Testes de integração | testes do repositório contra o Postgres do compose | idem |
+| CI | 5. Build | binário da api e bundle do frontend | idem |
+| CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato | idem |
+| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
+
+O CD publica exatamente as imagens que o CI testou: não há rebuild. As
+credenciais ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`
+(*Settings → Secrets and variables → Actions*), nunca no YAML.
+
+`main` e `dev` exigem os jobs de CI verdes antes do merge. Evidência de
 pipeline verde, de uma falha real já corrigida e do teste que trava a
 entrega se a regra de conflito de reserva quebrar está em
 [`docs/validacao-e3.md`](docs/validacao-e3.md).
+
+---
+
+## Variáveis de ambiente
+
+Todas têm valor padrão; o `.env` (fora do git) só é necessário para mudar
+algum. Modelo em [`.env.example`](.env.example).
+
+| Variável | Para que serve | Exemplo |
+| -------- | -------------- | ------- |
+| `POSTGRES_USER` | usuário do banco | `driveflow` |
+| `POSTGRES_PASSWORD` | senha do banco | `troque-esta-senha` |
+| `POSTGRES_DB` | nome do banco | `driveflow` |
+| `POSTGRES_PORT` | porta do banco publicada no host (só `docker-compose.yml`) | `5432` |
+| `API_PORT` | porta da api | `8080` |
+| `WEB_PORT` | porta do frontend no host | `3000` |
+| `DATABASE_URL` | conexão da api com o Postgres; vazia = armazenamento em memória | `postgres://driveflow:senha@db:5432/driveflow?sslmode=disable` |
+| `VITE_API_URL` | *build arg* do frontend; vazio = chama `/api` na mesma origem, via nginx | `""` |
+| `DRIVEFLOW_TAG` | tag das imagens no `docker-compose.prod.yml` | `latest` ou SHA do commit |
+| `LOCAL_UID` / `LOCAL_GID` | dono dos arquivos nos bind mounts do `docker-compose.dev.yml` | `1000` |
+
+---
+
+## Uso de IA
+
+O registro de prompts, respostas, decisões da equipe e evidência de validação
+está em [`docs/uso-de-ia.md`](docs/uso-de-ia.md). Toda saída de IA foi tratada
+como hipótese até passar por teste, execução ou revisão humana.
+
+---
+
+## Troubleshooting
+
+- **`port is already allocated` ao subir o compose.** Outro serviço usa a
+  porta no host (comum: um Postgres local na 5432). Troque só a porta
+  publicada, sem mexer no resto: `POSTGRES_PORT=5433 docker compose up --build`
+  (o mesmo vale para `API_PORT` e `WEB_PORT`).
+- **api reinicia com `banco indisponivel apos 45s: dial tcp: lookup db ...`.**
+  A api não acha o serviço `db` na rede do compose, em geral por um container
+  `driveflow-db` antigo criado com outra configuração. Recrie os containers
+  (os dados ficam no volume): `docker compose up -d --build --force-recreate`.
+- **`docker-compose.prod.yml` sobe uma versão antiga.** A tag `latest` já
+  estava em cache local. Atualize antes: `docker compose -f
+  docker-compose.prod.yml pull`.
 
 ---
 
@@ -315,12 +410,13 @@ DriveFlow/
 │       ├── unidade/          sem banco (entra no `make testar`)
 │       └── integracao/       exige PostgreSQL (tag `integracao`)
 ├── frontend/                 SPA em React
-│   ├── nginx.conf            serve a SPA e repassa /api para a API
+│   ├── docker/nginx.conf     serve a SPA e repassa /api para a API
 │   └── src/
-│       ├── api.js            cliente HTTP
+│       ├── api.ts            cliente HTTP
 │       └── componentes/      cadastro de empresa, frota e locações
 ├── docs/                     diagnóstico, fluxo de branches, evidências
-├── docker-compose.yml        os 3 containers
+├── docker-compose.yml        os 3 containers, buildados do código
+├── docker-compose.prod.yml   os 3 containers, a partir do Docker Hub
 └── Makefile                  atalhos de execução e teste
 ```
 
@@ -351,6 +447,6 @@ O diagnóstico completo e o rastreio detalhado estão em
 [`docs/diagnostico-e1.md`](docs/diagnostico-e1.md).
 
 **Encontro 3:** `make testar` virou pipeline de integração contínua
-([`ci.yml`](.github/workflows/ci.yml)), com status check obrigatório antes do
+([`ci-cd.yml`](.github/workflows/ci-cd.yml)), com status check obrigatório antes do
 merge em `dev` e `main`. Evidência em
 [`docs/validacao-e3.md`](docs/validacao-e3.md).
