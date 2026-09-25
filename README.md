@@ -1,21 +1,12 @@
 # DriveFlow
 
-Plataforma multi-tenant de locação de veículos para empresas. Cada empresa se
-cadastra na plataforma, registra a própria frota e opera o ciclo de locação:
-reservar, acompanhar, devolver e encerrar o contrato com o valor calculado.
+## 1. Visão geral
 
-Projeto integrador da disciplina **Desenvolvimento de Software Integrado —
-DevOps** (PG2305-04-Z251, Turma 4 — Z251).
+DriveFlow é uma plataforma multi-tenant de locação de veículos para empresas. Cada empresa cadastra sua frota e acompanha o ciclo de locação: reservar, devolver e encerrar contratos com o valor calculado. O sistema impede reservas conflitantes e isola os veículos e as locações por empresa.
 
-| Integrante | Matrícula |
-| ---------- | --------- |
-| Mateus     | 2650377   |
-| Natan      | 2650295   |
-| Jaime      | 2650365   |
-| Marcos     | 2651654   |
-| Ricardo    | 2650160   |
-| Helislana  | 2650139   |
----
+**Tecnologias:** backend em Go 1.24, frontend SPA em React 19 + TypeScript (Vite), PostgreSQL 16 para persistência e nginx para servir a aplicação web e encaminhar as chamadas à API. Sem `DATABASE_URL`, a API pode executar localmente com armazenamento em memória.
+
+Projeto integrador da disciplina **Desenvolvimento de Software Integrado — DevOps** (PG2305-04-Z251, Turma 4 — Z251).
 
 ## Arquitetura
 
@@ -37,12 +28,13 @@ Três containers, como levantado no diagnóstico do Encontro 1:
                  │  schema versionado│
                  └──────────────────┘
 ```
+No Compose, `web` e `api` conversam pela rede interna; a API aguarda o healthcheck do banco e aplica migrations na inicialização. O nginx recebe as chamadas do navegador e as encaminha para a API.
 
-| Camada | Tecnologia | Pasta |
-| ------ | ---------- | ----- |
-| `web`  | React 19 + TypeScript (Vite), servido por nginx | `frontend/` |
-| `api`  | Go 1.24, biblioteca padrão + `lib/pq` | `backend/` |
-| `db`   | PostgreSQL 16, migrations versionadas | `backend/internal/repository/migrations/` |
+| Componente | Tecnologia | Código/configuração |
+| --- | --- | --- |
+| `web` | React 19, TypeScript, Vite e nginx | `frontend/` |
+| `api` | Go 1.24, `net/http` e `lib/pq` | `backend/` |
+| `db` | PostgreSQL 16 | `backend/internal/repository/migrations/` |
 
 ---
 
