@@ -16,7 +16,7 @@
 - Keep the domain model, domain errors, and pricing rules in `backend/internal/entities/`; business rules and the repository port in `backend/internal/usecases/`; HTTP request/response translation in `backend/internal/delivery/http/`; and the memory/Postgres repositories plus migrations in `backend/internal/repository/`.
 - Dependencies point inward, and `go list -deps ./internal/<pkg>` is how you check it: `entities` imports nothing from the project; `usecases` imports `entities` and the `pkg/id` helper; `repository` imports only `entities`, satisfying the `usecases.Repository` port structurally, since Go interfaces are implicit; `delivery/http` imports `usecases` and `entities`. Never import `delivery` or `repository` from `usecases`.
 - The React SPA is in `frontend/src/`; put API-client changes in `frontend/src/api.js` and UI changes in `frontend/src/componentes/`.
-- Production Compose builds with `REACT_APP_API_URL=""`; `frontend/docker/nginx.conf` proxies relative `/api` and `/health` requests to the API. Do not replace these relative calls with a container hostname.
+- Production Compose builds with `VITE_API_URL=""`; `frontend/docker/nginx.conf` proxies relative `/api` and `/health` requests to the API. Do not replace these relative calls with a container hostname.
 
 ## Tests
 
