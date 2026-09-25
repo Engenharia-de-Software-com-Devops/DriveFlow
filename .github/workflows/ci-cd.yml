@@ -365,15 +365,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Tag rastreavel (SHA do commit) mais latest, que o
+      # Um unico repositorio publico (o plano gratuito do Docker Hub nao deixou
+      # tornar publico um segundo), com o servico no prefixo da tag:
+      # <servico>-<sha do commit>, rastreavel, e <servico>-latest, que o
       # docker-compose.prod.yml usa por padrao.
       - name: Tag e push
         env:
-          NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+          REPOSITORIO: ${{ secrets.DOCKERHUB_USERNAME }}/driveflow
         run: |
           for servico in api web; do
             for tag in ${{ github.sha }} latest; do
-              docker tag driveflow-$servico $NAMESPACE/driveflow-$servico:$tag
-              docker push $NAMESPACE/driveflow-$servico:$tag
+              docker tag driveflow-$servico $REPOSITORIO:$servico-$tag
+              docker push $REPOSITORIO:$servico-$tag
             done
           done

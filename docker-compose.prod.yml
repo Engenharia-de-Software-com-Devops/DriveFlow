@@ -4,8 +4,9 @@
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d
 #
-# DRIVEFLOW_TAG escolhe a versao: `latest` (padrao) ou o SHA de um commit da
-# main, o que tambem serve de rollback para uma versao anterior.
+# As duas imagens ficam no mesmo repositorio, jaimegdj/driveflow, com o servico
+# no prefixo da tag (api-..., web-...). DRIVEFLOW_TAG escolhe a versao: `latest`
+# (padrao) ou o SHA de um commit da main, o que tambem serve de rollback.
 name: driveflow
 
 services:
@@ -27,7 +28,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: jaimegdj/driveflow-api:${DRIVEFLOW_TAG:-latest}
+    image: jaimegdj/driveflow:api-${DRIVEFLOW_TAG:-latest}
     environment:
       API_PORT: 8080
       DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
@@ -39,7 +40,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: jaimegdj/driveflow-web:${DRIVEFLOW_TAG:-latest}
+    image: jaimegdj/driveflow:web-${DRIVEFLOW_TAG:-latest}
     depends_on:
       api:
         condition: service_healthy
