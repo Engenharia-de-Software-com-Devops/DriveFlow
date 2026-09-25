@@ -14,7 +14,7 @@ DevOps** (PG2305-04-Z251, Turma 4 — Z251).
 | Jaime      | 2650365   |
 | Marcos     | 2651654   |
 | Ricardo    | 2650160   |
-
+| Helislana  | 2650139   |
 ---
 
 ## Arquitetura
