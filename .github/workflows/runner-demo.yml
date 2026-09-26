@@ -1,0 +1,28 @@
+name: Runner demo
+
+# Manual smoke check for the self-hosted runner: proves a job lands on the
+# registered machine and can reach its Docker daemon. Changes nothing.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    name: Self-hosted runner check
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Runner machine
+        run: |
+          echo "runner: $RUNNER_NAME"
+          echo "host:   $(hostname)"
+          echo "user:   $(whoami)"
+          uname -a
+
+      - name: Docker access
+        run: |
+          docker version --format 'docker {{.Server.Version}}'
+          docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
