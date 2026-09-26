@@ -7,9 +7,10 @@ name: CI/CD
 #   1. analise estatica -> 2. seguranca -> 3. testes de unidade
 #   -> 4. testes de integracao -> 5. build -> 6. smoke test da stack docker
 #
-# Etapas 1 a 6 sao o CI e rodam em todo push e PR. A etapa 7 e o CD: so em
-# push na main, publica no Docker Hub as mesmas imagens que o smoke test
-# validou (docker save/load), sem rebuild.
+# Etapas 1 a 6 sao o CI e rodam em todo push e PR. As etapas 7 e 8 sao o CD,
+# so em push na main: a 7 publica no Docker Hub as mesmas imagens que o smoke
+# test validou (docker save/load), sem rebuild; a 8 implanta essas imagens na
+# maquina do runner self-hosted.
 
 on:
   push:
@@ -379,3 +380,38 @@ jobs:
               docker push $REPOSITORIO:$servico-$tag
             done
           done
+
+  # ---- 8. CD: implantacao no runner self-hosted -----------------------------
+  # Roda na maquina do runner registrado no repositorio (labels self-hosted,
+  # Linux, X64): baixa do Docker Hub as imagens que acabaram de ser publicadas
+  # e sobe a stack de producao. O banco fica no volume, entre implantacoes.
+  implantar:
+    name: 8. CD — implantar no servidor self-hosted
+    runs-on: [self-hosted, Linux, X64]
+    needs: publicar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    env:
+      # O SHA, e nao `latest`, garante que sobe exatamente o que este run publicou.
+      DRIVEFLOW_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baixar as imagens publicadas
+        run: docker compose -f docker-compose.prod.yml pull
+
+      - name: Subir a stack de produção
+        run: docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180
+
+      - name: Verificar pela stack
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 10 --retry-all-errors --retry-delay 2 http://localhost:3000/health
+          curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
+
+      - name: Versão implantada
+        run: docker compose -f docker-compose.prod.yml ps --format 'table {{.Service}}\t{{.Image}}\t{{.Status}}'
+
+      - name: Logs dos containers
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml logs
