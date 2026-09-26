@@ -12,16 +12,27 @@ const empresa: Empresa = {
 };
 
 describe('Navbar', () => {
-  it('exibe apenas a marca quando nao ha empresa', () => {
+  it('exibe apenas a marca e a versao quando nao ha empresa', () => {
     render(
       <MemoryRouter>
-        <Navbar empresa={null} onSair={() => {}} />
+        <Navbar empresa={null} versao="0.1.0" onSair={() => {}} />
       </MemoryRouter>,
     );
 
     expect(screen.getByText('DriveFlow')).toBeInTheDocument();
+    expect(screen.getByText('v0.1.0')).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('exibe traco quando a versao ainda nao chegou', () => {
+    render(
+      <MemoryRouter>
+        <Navbar empresa={null} versao={null} onSair={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('v—')).toBeInTheDocument();
   });
 
   it('exibe links de navegacao e dropdown com CNPJ', async () => {
@@ -30,9 +41,11 @@ describe('Navbar', () => {
 
     render(
       <MemoryRouter initialEntries={['/frota']}>
-        <Navbar empresa={empresa} onSair={onSair} />
+        <Navbar empresa={empresa} versao="0.1.0" onSair={onSair} />
       </MemoryRouter>,
     );
+
+    expect(screen.getByText('v0.1.0')).toBeInTheDocument();
 
     expect(screen.getByRole('link', { name: 'Frota' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Reservas' })).toBeInTheDocument();
