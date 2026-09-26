@@ -1,6 +1,6 @@
 # Atalhos para os comandos do projeto. `make` sem argumento lista os alvos.
 .DEFAULT_GOAL := ajuda
-.PHONY: ajuda instalar testar testar-backend testar-frontend testar-integracao \
+.PHONY: ajuda instalar testar testar-backend testar-frontend testar-integracao testar-scripts \
         verificar build api web subir derrubar logs limpar
 
 ajuda: ## Lista os alvos disponiveis
@@ -11,7 +11,10 @@ instalar: ## Baixa as dependencias do backend e do frontend
 	cd backend && go mod download
 	cd frontend && npm install
 
-testar: testar-backend testar-frontend ## Roda todos os testes automatizados
+testar: testar-backend testar-frontend testar-scripts ## Roda todos os testes automatizados
+
+testar-scripts: ## Testa o calculo automatico de versao das releases
+	bash scripts/next-version_test.sh
 
 testar-backend: ## Testes de unidade do backend, em tests/unidade (sem banco e sem docker)
 	cd backend && go test ./... -count=1

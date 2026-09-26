@@ -6,7 +6,8 @@
 #
 # As duas imagens ficam no mesmo repositorio, jaimegdj/driveflow, com o servico
 # no prefixo da tag (api-..., web-...). DRIVEFLOW_TAG escolhe a versao: `latest`
-# (padrao) ou o SHA de um commit da main, o que tambem serve de rollback.
+# (padrao), uma release (`v0.2.0`) ou o SHA de um commit da main; as duas
+# ultimas tambem servem de rollback.
 name: driveflow
 
 services:
