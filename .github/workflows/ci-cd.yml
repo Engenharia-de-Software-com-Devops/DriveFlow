@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   NODE_VERSION: "22"
@@ -344,13 +344,46 @@ jobs:
         if: always()
         run: docker compose down -v
 
-  # ---- 7. CD: publicacao no Docker Hub ---------------------------------------
-  publicar:
-    name: 7. CD — publicar no Docker Hub
+  # ---- 7. Release do projeto -------------------------------------------------
+  release:
+    name: 7. Release — GitHub
     runs-on: ubuntu-24.04
     needs: smoke-docker
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 10
+    outputs:
+      versao: ${{ steps.versao.outputs.versao }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler a versão do projeto
+        id: versao
+        shell: bash
+        run: |
+          versao=$(grep -Eo 'Version = "[^"]+"' backend/internal/delivery/http/server.go | head -n 1 | sed -E 's/.*"([^"]+)"/\1/')
+          if [ -z "$versao" ]; then
+            echo "Não foi possível localizar a versão no backend."
+            exit 1
+          fi
+          echo "versao=$versao" >> "$GITHUB_OUTPUT"
+          echo "Versão do projeto: $versao"
+
+      - name: Criar tag e release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.versao.outputs.versao }}
+          name: Release v${{ steps.versao.outputs.versao }}
+          generate_release_notes: true
+
+  # ---- 8. CD: publicacao no Docker Hub ---------------------------------------
+  publicar:
+    name: 8. CD — publicar no Docker Hub
+    runs-on: ubuntu-24.04
+    needs: release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 15
+    env:
+      VERSAO_PROJETO: ${{ needs.release.outputs.versao }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -365,15 +398,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Tag rastreavel (SHA do commit) mais latest, que o
-      # docker-compose.prod.yml usa por padrao.
+      # Usa a mesma tag da release do projeto para manter a imagem rastreavel e
+      # consistente com a versao publicada no GitHub.
       - name: Tag e push
         env:
           NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
+          tag="v${VERSAO_PROJETO}"
           for servico in api web; do
-            for tag in ${{ github.sha }} latest; do
-              docker tag driveflow-$servico $NAMESPACE/driveflow-$servico:$tag
-              docker push $NAMESPACE/driveflow-$servico:$tag
-            done
+            docker tag driveflow-$servico "$REPOSITORIO:$servico-$tag"
+            docker push "$REPOSITORIO:$servico-$tag"
           done
+
+      - name: Atualizar tag do Compose de produção
+        run: |
+          printf 'DRIVEFLOW_TAG=v%s\n' "${VERSAO_PROJETO}" > .env.release
+          echo "Tag de produção atualizada para: v${VERSAO_PROJETO}"
+          cat .env.release

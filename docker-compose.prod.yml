@@ -4,8 +4,10 @@
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d
 #
-# DRIVEFLOW_TAG escolhe a versao: `latest` (padrao) ou o SHA de um commit da
-# main, o que tambem serve de rollback para uma versao anterior.
+# As duas imagens ficam no mesmo repositorio, jaimegdj/driveflow, com o servico
+# no prefixo da tag (api-..., web-...). DRIVEFLOW_TAG escolhe a versao publicada;
+# o pipeline de release usa a tag da versao do projeto (`vX.Y.Z`) para manter
+# o compose alinhado com a release do GitHub.
 name: driveflow
 
 services:
