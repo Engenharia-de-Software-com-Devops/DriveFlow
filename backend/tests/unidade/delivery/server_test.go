@@ -53,6 +53,9 @@ func TestHealth(t *testing.T) {
 	if body["status"] != "ok" {
 		t.Errorf("status do corpo = %v, esperado ok", body["status"])
 	}
+	if body["versao"] != httpdelivery.Version {
+		t.Errorf("versao = %v, esperado %s", body["versao"], httpdelivery.Version)
+	}
 }
 
 // Fluxo completo do E1: cadastrar empresa, cadastrar frota, reservar e devolver.

@@ -7,7 +7,7 @@ import * as api from './api'
 describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    vi.spyOn(api, 'verificarSaude').mockResolvedValue({ status: 'ok' })
+    vi.spyOn(api, 'verificarSaude').mockResolvedValue({ status: 'ok', versao: '0.1.0' })
   })
 
   it('pede o cadastro da empresa quando nenhuma esta selecionada', async () => {
