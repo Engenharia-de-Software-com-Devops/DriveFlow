@@ -26,6 +26,14 @@ services:
       retries: 10
       start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
 
   api:
     image: jaimegdj/driveflow:api-${DRIVEFLOW_TAG:-latest}
@@ -38,6 +46,14 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
 
   web:
     image: jaimegdj/driveflow:web-${DRIVEFLOW_TAG:-latest}
@@ -47,6 +63,14 @@ services:
     ports:
       - "${WEB_PORT:-3000}:8080"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
 
 volumes:
   dados_postgres:
