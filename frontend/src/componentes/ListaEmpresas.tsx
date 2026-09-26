@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ErroApi, listarEmpresas, type Empresa } from '../api';
+import StatusBanner from './StatusBanner';
 
 interface Props {
   aoSelecionar: (empresa: Empresa) => void;
@@ -33,7 +34,7 @@ export default function ListaEmpresas({ aoSelecionar }: Props) {
       <p className="ajuda">Clique em uma empresa para entrar nela.</p>
 
       <div className="login-lista-corpo">
-        {empresas === null && <p className="ajuda">Carregando...</p>}
+        {empresas === null && <StatusBanner tipo="loading" mensagem="Carregando empresas..." />}
 
         {empresas && empresas.length === 0 && !erro && (
           <p className="ajuda">Nenhuma empresa cadastrada</p>
@@ -56,7 +57,7 @@ export default function ListaEmpresas({ aoSelecionar }: Props) {
           </ul>
         )}
 
-        {erro && <p role="alert" className="erro">{erro}</p>}
+        {erro && <StatusBanner tipo="error" mensagem={erro} />}
       </div>
     </section>
   );

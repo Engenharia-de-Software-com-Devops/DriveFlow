@@ -5,6 +5,7 @@ import { listarFrota, listarLocacoes, verificarSaude, type Empresa, type Locacao
 import CadastroEmpresa from './componentes/CadastroEmpresa';
 import ListaEmpresas from './componentes/ListaEmpresas';
 import Navbar from './componentes/Navbar';
+import StatusBanner from './componentes/StatusBanner';
 import PaginaFrota from './paginas/PaginaFrota';
 import PaginaReservas from './paginas/PaginaReservas';
 
@@ -76,9 +77,7 @@ export default function App() {
 
       <div className="app-conteudo">
         {apiNoAr === false && (
-          <p role="alert" className="erro aviso-api">
-            API indisponivel. Suba o backend antes de usar a aplicacao.
-          </p>
+          <StatusBanner tipo="error" mensagem="API indisponivel. Suba o backend antes de usar a aplicacao." />
         )}
 
         <main>
@@ -105,7 +104,7 @@ export default function App() {
               element={
                 empresa ? (
                   <>
-                    {erro && <p role="alert" className="erro">{erro}</p>}
+                    {erro && <StatusBanner tipo="error" mensagem={erro} />}
                     <PaginaFrota
                       empresaId={empresa.id}
                       veiculos={veiculos}
@@ -122,7 +121,7 @@ export default function App() {
               element={
                 empresa ? (
                   <>
-                    {erro && <p role="alert" className="erro">{erro}</p>}
+                    {erro && <StatusBanner tipo="error" mensagem={erro} />}
                     <PaginaReservas
                       empresaId={empresa.id}
                       veiculos={veiculos}

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { criarEmpresa, ErroApi, type Empresa } from '../api';
+import StatusBanner from './StatusBanner';
 
 interface Props {
   aoCadastrar: (empresa: Empresa) => void;
@@ -54,7 +55,7 @@ export default function CadastroEmpresa({ aoCadastrar }: Props) {
           {enviando ? 'Cadastrando...' : 'Cadastrar empresa'}
         </button>
       </form>
-      {erro && <p role="alert" className="erro">{erro}</p>}
+      {erro && <StatusBanner tipo="error" mensagem={erro} />}
     </section>
   );
 }
