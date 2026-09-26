@@ -38,64 +38,10 @@ No Compose, `web` e `api` conversam pela rede interna; a API aguarda o healthche
 
 ---
 
-## Pré-requisitos
+## Como rodar localmente (sem Docker)
 
-Escolha **um** dos caminhos:
-
-- **Com containers:** Docker 24+ com o plugin `docker compose`.
-- **Sem containers:** [Go](https://go.dev/dl/) 1.24+ e [Node.js](https://nodejs.org/) 18+ com npm.
-
----
-
-## Como executar
-
-### Opção A — os 3 containers (recomendada)
-
-```bash
-git clone https://github.com/Engenharia-de-Software-com-Devops/DriveFlow.git
-cd DriveFlow
-docker compose up --build
-```
-
-O `.env` é opcional: sem ele, o compose usa os valores de exemplo. Para trocar
-senha ou portas, `cp .env.example .env` e edite (ver
-[Variáveis de ambiente](#variáveis-de-ambiente)).
-
-Quando os três containers estiverem no ar:
-
-- Aplicação: <http://localhost:3000>
-- API: <http://localhost:8080/health>
-
-Para parar: `docker compose down` (acrescente `-v` para apagar também os dados
-do banco).
-
-### A partir das imagens publicadas (Docker Hub)
-
-O CD publica as imagens já validadas pelo CI a cada merge na `main`, no
-repositório público
-[`jaimegdj/driveflow`](https://hub.docker.com/r/jaimegdj/driveflow). As duas
-imagens ficam no mesmo repositório, com o serviço no prefixo da tag:
-`api-latest` e `web-latest`, mais `api-<sha>` e `web-<sha>` para cada commit.
-Nada é buildado localmente:
-
-```bash
-docker pull jaimegdj/driveflow:api-latest
-docker pull jaimegdj/driveflow:web-latest
-docker compose -f docker-compose.prod.yml up -d
-```
-
-Aplicação em <http://localhost:3000>. Para rodar uma versão específica (ou
-voltar para uma anterior), passe o SHA do commit:
-
-```bash
-DRIVEFLOW_TAG=<sha-do-commit> docker compose -f docker-compose.prod.yml up -d
-```
-
-Sem Docker Hub, as mesmas imagens estão no artefato `imagens-docker` de cada
-execução do workflow (aba *Actions*): baixe o zip, extraia e rode
-`gunzip -c imagens.tar.gz | docker load`.
-
-### Opção B — execução local, sem Docker
+**Pré-requisitos:** [Go](https://go.dev/dl/) 1.24+ e
+[Node.js](https://nodejs.org/) 18+ com npm.
 
 Dois terminais.
 
@@ -123,20 +69,7 @@ npm run dev
 # abre http://localhost:3000
 ```
 
-### Desenvolvimento com hot reload nos containers
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-
-Defina `LOCAL_UID` e `LOCAL_GID` no `.env` para manter a posse correta dos arquivos
-gerados pelos bind mounts. Use `id -u` e `id -g` para obter os valores.
-
-Os módulos Node ficam em `frontend/node_modules`, para que o LSP local resolva
-imports e tipos. Os caches Go permanecem no filesystem interno do container,
-pois não são necessários para o LSP executado no host.
-
-### Opção C — só o banco em container, API e frontend locais
+### Variante — só o banco em container, API e frontend locais
 
 Três terminais. Útil para desenvolver a API/frontend com hot-reload e
 persistência real, sem buildar as imagens de `api` e `web`.
@@ -172,7 +105,74 @@ compose up -d db` falha com `port is already allocated` nesse caso).
 
 ---
 
-## Como testar
+## Como rodar com Docker Compose
+
+Caminho principal de avaliação. **Pré-requisito:** Docker 24+ com o plugin
+`docker compose`. Do clone ao "funciona", um comando:
+
+```bash
+git clone https://github.com/Engenharia-de-Software-com-Devops/DriveFlow.git
+cd DriveFlow
+docker compose up --build
+```
+
+O `.env` é opcional: sem ele, o compose usa os valores de exemplo. Para trocar
+senha ou portas, `cp .env.example .env` e edite (ver
+[Variáveis de ambiente](#variáveis-de-ambiente)).
+
+Quando os três containers estiverem no ar:
+
+- Aplicação: <http://localhost:3000>
+- API: <http://localhost:8080/health>
+
+Para parar: `docker compose down` (acrescente `-v` para apagar também os dados
+do banco).
+
+### Desenvolvimento com hot reload nos containers
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Defina `LOCAL_UID` e `LOCAL_GID` no `.env` para manter a posse correta dos arquivos
+gerados pelos bind mounts. Use `id -u` e `id -g` para obter os valores.
+
+Os módulos Node ficam em `frontend/node_modules`, para que o LSP local resolva
+imports e tipos. Os caches Go permanecem no filesystem interno do container,
+pois não são necessários para o LSP executado no host.
+
+---
+
+## Como rodar a partir da imagem publicada
+
+O CD publica as imagens já validadas pelo CI a cada merge na `main`, no
+repositório público
+[`jaimegdj/driveflow`](https://hub.docker.com/r/jaimegdj/driveflow). As duas
+imagens ficam no mesmo repositório, com o serviço no prefixo da tag:
+`api-latest` e `web-latest`, mais `api-<sha>` e `web-<sha>` para cada commit.
+Nada é buildado localmente; basta ter o `docker-compose.prod.yml` (o clone do
+repositório ou só esse arquivo):
+
+```bash
+docker pull jaimegdj/driveflow:api-latest
+docker pull jaimegdj/driveflow:web-latest
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Aplicação em <http://localhost:3000>. Para rodar uma versão específica (ou
+voltar para uma anterior), passe o SHA do commit:
+
+```bash
+DRIVEFLOW_TAG=<sha-do-commit> docker compose -f docker-compose.prod.yml up -d
+```
+
+Sem Docker Hub, as mesmas imagens estão no artefato `imagens-docker` de cada
+execução do workflow (aba *Actions*): baixe o zip, extraia e rode
+`gunzip -c imagens.tar.gz | docker load`.
+
+---
+
+## Como rodar os testes
 
 A suíte está dividida em dois níveis, e a diferença é só uma: precisa de banco
 no ar ou não.
