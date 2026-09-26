@@ -88,6 +88,26 @@ func (p *PostgresRepository) FindCompany(ctx context.Context, companyID string) 
 	return c, nil
 }
 
+func (p *PostgresRepository) ListCompanies(ctx context.Context) ([]entities.Company, error) {
+	const query = `SELECT id, nome, cnpj, criada_em FROM empresas ORDER BY nome`
+
+	rows, err := p.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("listar empresas: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	listed := make([]entities.Company, 0)
+	for rows.Next() {
+		var c entities.Company
+		if err := rows.Scan(&c.ID, &c.Name, &c.TaxID, &c.CreatedAt); err != nil {
+			return nil, fmt.Errorf("ler empresa: %w", err)
+		}
+		listed = append(listed, c)
+	}
+	return listed, rows.Err()
+}
+
 func (p *PostgresRepository) CreateVehicle(ctx context.Context, v entities.Vehicle) (entities.Vehicle, error) {
 	const query = `
 		INSERT INTO veiculos (id, empresa_id, placa, modelo, categoria, tarifa_diaria, status)

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { criarLocacao, ErroApi } from './api';
+import { criarLocacao, ErroApi, listarEmpresas } from './api';
 
 describe('criarLocacao', () => {
   afterEach(() => {
@@ -58,5 +58,33 @@ describe('criarLocacao', () => {
         fim_previsto: '2026-03-13T10:00:00.000Z',
       }),
     ).rejects.toEqual(new ErroApi('conflito com a locacao loc-2', 409));
+  });
+});
+
+describe('listarEmpresas', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('chama GET /api/empresas', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify([
+          { id: 'emp-1', nome: 'Locadora Alfa', cnpj: '12345678000190' },
+        ]),
+    } as Response);
+
+    const empresas = await listarEmpresas();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/empresas'),
+      expect.objectContaining({
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    expect(empresas).toEqual([
+      { id: 'emp-1', nome: 'Locadora Alfa', cnpj: '12345678000190' },
+    ]);
   });
 });

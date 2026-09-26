@@ -20,6 +20,7 @@ import (
 type Repository interface {
 	CreateCompany(ctx context.Context, c entities.Company) (entities.Company, error)
 	FindCompany(ctx context.Context, companyID string) (entities.Company, error)
+	ListCompanies(ctx context.Context) ([]entities.Company, error)
 
 	CreateVehicle(ctx context.Context, v entities.Vehicle) (entities.Vehicle, error)
 	FindVehicle(ctx context.Context, companyID, vehicleID string) (entities.Vehicle, error)

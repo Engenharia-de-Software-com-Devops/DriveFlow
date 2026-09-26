@@ -53,6 +53,7 @@ func NewServer(
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /health", s.health)
 	s.mux.HandleFunc("POST /api/empresas", s.createCompany)
+	s.mux.HandleFunc("GET /api/empresas", s.listCompanies)
 	s.mux.HandleFunc("GET /api/empresas/{empresaID}/veiculos", s.listFleet)
 	s.mux.HandleFunc("POST /api/empresas/{empresaID}/veiculos", s.createVehicle)
 	s.mux.HandleFunc("GET /api/empresas/{empresaID}/locacoes", s.listRentals)
