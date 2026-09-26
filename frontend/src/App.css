@@ -552,6 +552,12 @@ td button {
   color: var(--cor-texto);
 }
 
+.form-preenchimento-aleatorio {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
 .modal-acoes {
   display: flex;
   justify-content: flex-end;

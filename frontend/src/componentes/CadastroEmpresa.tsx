@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { criarEmpresa, ErroApi, type Empresa } from '../api';
-import StatusBanner from './StatusBanner';
+import { randomCompanyFields } from '../util/preenchimentoAleatorio';
+import BotaoPreenchimentoAleatorio from './BotaoPreenchimentoAleatorio';
 
 interface Props {
   aoCadastrar: (empresa: Empresa) => void;
@@ -12,6 +13,13 @@ export default function CadastroEmpresa({ aoCadastrar }: Props) {
   const [cnpj, setCnpj] = useState('');
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
+
+  function preencherAleatorio() {
+    const fields = randomCompanyFields();
+    setNome(fields.nome);
+    setCnpj(fields.cnpj);
+    setErro('');
+  }
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -33,6 +41,9 @@ export default function CadastroEmpresa({ aoCadastrar }: Props) {
         Cada empresa e um tenant: enxerga apenas a propria frota e as proprias locacoes.
       </p>
       <form onSubmit={enviar}>
+        <div className="form-preenchimento-aleatorio">
+          <BotaoPreenchimentoAleatorio onClick={preencherAleatorio} disabled={enviando} />
+        </div>
         <label htmlFor="empresa-nome">Nome da empresa</label>
         <input
           id="empresa-nome"

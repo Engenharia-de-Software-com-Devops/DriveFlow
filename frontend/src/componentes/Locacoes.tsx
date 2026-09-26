@@ -8,6 +8,8 @@ import {
   type Veiculo,
 } from '../api';
 import { valorPrevisto } from '../tarifa';
+import { randomRentalFields } from '../util/preenchimentoAleatorio';
+import BotaoPreenchimentoAleatorio from './BotaoPreenchimentoAleatorio';
 import Modal from './Modal';
 import type { ControleAcaoPagina } from './Page';
 import StatusBanner from './StatusBanner';
@@ -87,6 +89,12 @@ export default function Locacoes({ empresaId, veiculos, locacoes, aoAtualizar, o
 
   function alterar(campo: keyof Form, valor: string) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  function preencherAleatorio() {
+    if (disponiveis.length === 0) return;
+    setForm(randomRentalFields(disponiveis));
+    setErro('');
   }
 
   async function enviar(evento: FormEvent) {
@@ -204,6 +212,12 @@ export default function Locacoes({ empresaId, veiculos, locacoes, aoAtualizar, o
 
       <Modal aberto={modalAberto} titulo="Nova reserva" onFechar={fecharModal}>
         <form onSubmit={enviar} className="modal-form">
+          <div className="form-preenchimento-aleatorio">
+            <BotaoPreenchimentoAleatorio
+              onClick={preencherAleatorio}
+              disabled={enviando || disponiveis.length === 0}
+            />
+          </div>
           <label htmlFor="locacao-veiculo">Veiculo</label>
           <select
             id="locacao-veiculo"
