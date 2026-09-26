@@ -149,7 +149,10 @@ O CD publica as imagens já validadas pelo CI a cada merge na `main`, no
 repositório público
 [`jaimegdj/driveflow`](https://hub.docker.com/r/jaimegdj/driveflow). As duas
 imagens ficam no mesmo repositório, com o serviço no prefixo da tag:
-`api-latest` e `web-latest`, mais `api-<sha>` e `web-<sha>` para cada commit.
+`api-latest` e `web-latest`, `api-v<versão>` e `web-v<versão>` para cada
+[release](https://github.com/Engenharia-de-Software-com-Devops/DriveFlow/releases),
+e `api-<sha>` e `web-<sha>` para cada commit. `GET /health` informa a versão
+em execução.
 Nada é buildado localmente; basta ter o `docker-compose.prod.yml` (o clone do
 repositório ou só esse arquivo):
 
@@ -160,10 +163,12 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Aplicação em <http://localhost:3000>. Para rodar uma versão específica (ou
-voltar para uma anterior), passe o SHA do commit:
+voltar para uma anterior), passe a release ou o SHA do commit:
 
 ```bash
+DRIVEFLOW_TAG=v0.2.0 docker compose -f docker-compose.prod.yml up -d
 DRIVEFLOW_TAG=<sha-do-commit> docker compose -f docker-compose.prod.yml up -d
+curl -s localhost:3000/health   # {"status":"ok","versao":"0.2.0"}
 ```
 
 Sem Docker Hub, as mesmas imagens estão no artefato `imagens-docker` de cada
@@ -179,10 +184,11 @@ no ar ou não.
 
 | Alvo | O que roda | Precisa de Docker? |
 | ---- | ---------- | ------------------ |
-| `make testar` | unidade do backend + frontend | não |
+| `make testar` | unidade do backend + frontend + cálculo de versão | não |
 | `make testar-backend` | unidade do backend | não |
 | `make testar-frontend` | suítes do React | não |
 | `make testar-integracao` | unidade + integração com o Postgres | sim |
+| `make testar-scripts` | `scripts/next-version_test.sh`, o cálculo de versão das releases | não |
 
 ```bash
 make testar              # o de todo dia: rápido e sem dependência externa
@@ -240,18 +246,21 @@ Cada etapa só começa quando a anterior passa.
 
 | Etapa | Job | O que faz | Quando roda |
 | ----- | --- | --------- | ----------- |
+| — | 0. Versão | testa e roda `scripts/next-version.sh`: próxima versão pelos Conventional Commits desde a última tag `vX.Y.Z` (`feat` sobe a minor, `!`/`BREAKING CHANGE` a major, o resto a patch). Em PR, o resumo do run mostra a versão que o merge vai gerar | todo push e PR, em paralelo com o CI |
 | CI | 1. Análise estática | `gofmt`, `go vet`, `staticcheck`, direção das dependências entre camadas, migrations, ESLint, `tsc` e validade dos arquivos de compose | todo push e PR para `dev` e `main` |
 | CI | 2. Segurança | `govulncheck` e `npm audit` | idem |
 | CI | 3. Testes de unidade | Go (`-race`, `-shuffle`, cobertura) e Vitest | idem |
 | CI | 4. Testes de integração | testes do repositório contra o Postgres do compose | idem |
 | CI | 5. Build | binário da api e bundle do frontend | idem |
-| CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato | idem |
-| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
-| CD | 8. Implantar | no runner self-hosted `jaime-note`: `docker compose -f docker-compose.prod.yml pull` e `up --wait` com `DRIVEFLOW_TAG=<sha>`, depois `/health` pelo web | só em push na `main`, depois do job 7 |
+| CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato. Na `main` a api é buildada com a versão do job 0 e o smoke confere que o `/health` a reporta | idem |
+| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-v<versão>`, `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
+| CD | 8. Release | cria a tag `v<versão>` no commit e a [Release do GitHub](https://github.com/Engenharia-de-Software-com-Devops/DriveFlow/releases) com notas geradas dos PRs mesclados | só em push na `main`, depois do job 7 |
+| CD | 9. Implantar | no runner self-hosted `jaime-note`: mostra a versão em execução, `docker compose -f docker-compose.prod.yml pull` e `up --wait` com `DRIVEFLOW_TAG=v<versão>`, e confere que o `/health` responde a versão nova | só em push na `main`, depois do job 8 |
 
-O CD publica exatamente as imagens que o CI testou: não há rebuild. O job 8
-implanta a tag do SHA, e não `latest`, então sobe exatamente o que o run publicou;
-o banco fica no volume `dados_postgres` entre implantações. As
+O CD publica exatamente as imagens que o CI testou: não há rebuild. A tag do
+git só é criada depois que as imagens daquela versão estão no Docker Hub, e o
+job 9 implanta a tag da release, e não `latest`, então sobe exatamente o que o
+run publicou; o banco fica no volume `dados_postgres` entre implantações. As
 credenciais ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`
 (*Settings → Secrets and variables → Actions*), nunca no YAML.
 
@@ -303,6 +312,12 @@ como hipótese até passar por teste, execução ou revisão humana.
 - **`docker-compose.prod.yml` sobe uma versão antiga.** A tag `latest` já
   estava em cache local. Atualize antes: `docker compose -f
   docker-compose.prod.yml pull`.
+- **Job `9. CD — implantar` parado em *Queued*.** O runner self-hosted
+  `jaime-note` está offline (máquina desligada ou serviço parado); os jobs 0 a
+  8 terminam e a release já fica publicada. Confira e religue o serviço:
+  `systemctl status 'actions.runner.*'` e
+  `sudo systemctl start 'actions.runner.*'`. O job pendente começa sozinho
+  quando o runner volta a *Idle* em *Settings → Actions → Runners*.
 
 ---
 
@@ -412,6 +427,7 @@ DriveFlow/
 ├── docs/                     diagnóstico, fluxo de branches, evidências
 ├── docker-compose.yml        os 3 containers, buildados do código
 ├── docker-compose.prod.yml   os 3 containers, a partir do Docker Hub
+├── scripts/                  cálculo da versão das releases e seu teste
 └── Makefile                  atalhos de execução e teste
 ```
 

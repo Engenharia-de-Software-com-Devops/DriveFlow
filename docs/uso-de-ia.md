@@ -140,6 +140,49 @@ antes do commit; pipeline verde e o incidente real de falha documentados em
 
 ---
 
+## Registro 6 — Runner self-hosted, implantação e versionamento automático
+
+**Prompt**
+> Verifique se o runner self-hosted do repositório está funcionando e como
+> demonstrá-lo. Depois: ao atualizar a `main`, o runner deve achar a versão
+> mais recente e subir a nova versão; crie tags no git e versões automáticas
+> que se reflitam no Docker Hub.
+
+**Resposta (resumo)**
+Consultou a API do GitHub e o serviço na máquina: o runner `jaime-note` estava
+`online`, mas nunca tinha executado um job, porque todos os jobs da `main`
+usavam `ubuntu-24.04` e o job de implantação do PR #28 só existia numa branch
+com base na `homo`, em conflito com a `main`. Propôs um workflow manual de
+demonstração (`runner-demo.yml`), depois levou o job de implantação para a
+`main` e, por fim, o versionamento: `scripts/next-version.sh` calcula a versão
+pelos Conventional Commits desde a última tag, a api é buildada com essa versão
+(`-ldflags -X`), o CD publica `<serviço>-v<versão>`, cria a tag e a release no
+GitHub e o runner implanta essa tag, conferindo o `/health`.
+
+**Decisão da equipe**
+Aceita, com correções no caminho:
+- O disparo do `runner-demo.yml` falhou com `HTTP 404` na primeira tentativa: o
+  arquivo ainda não estava na `main`, e `workflow_dispatch` só existe para
+  workflows na branch padrão. Resolvido com PR para a `main` (#31).
+- O job `release` da `homo` (PR #30), que lê a versão fixa do `server.go`,
+  **não foi reaproveitado**: com versão manual, todo merge que esquecesse de
+  mudar o número tentaria recriar a mesma tag. A versão passou a ser calculada.
+- A versão é calculada antes do build, e não depois, para a imagem publicada
+  continuar sendo a mesma que o smoke test validou (sem rebuild no CD).
+- O próprio teste do script, escrito pela IA, entrou em recursão infinita
+  (`commit()` chamando a si mesma após uma substituição de texto) e só foi
+  corrigido porque foi executado antes do commit.
+
+**Evidência de validação**
+Run do workflow `Runner demo` com `Runner name: 'jaime-note'` e o `docker ps`
+da máquina; run do merge do PR #32 com os jobs 1 a 8 verdes e a stack
+recriada com `api-<sha>`; `bash scripts/next-version_test.sh` com os 8 casos
+em `ok` (feat, fix, `!`, `BREAKING CHANGE`, corpo de merge, re-run e ausência
+de tag); build local da api com `DRIVEFLOW_VERSION=9.9.9` respondendo
+`"versao":"9.9.9"` no `/health`, e sem a variável mantendo `0.1.0`.
+
+---
+
 ## O que a equipe não delegou à IA
 
 Conforme a validação humana exigida no diagnóstico do E1:
