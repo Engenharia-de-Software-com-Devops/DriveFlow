@@ -402,7 +402,7 @@ jobs:
       # consistente com a versao publicada no GitHub.
       - name: Tag e push
         env:
-          NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+          REPOSITORIO: ${{ secrets.DOCKERHUB_USERNAME }}/driveflow
         run: |
           tag="v${VERSAO_PROJETO}"
           for servico in api web; do

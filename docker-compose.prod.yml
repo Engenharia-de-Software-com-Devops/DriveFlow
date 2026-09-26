@@ -27,9 +27,17 @@ services:
       retries: 10
       start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
 
   api:
-    image: jaimegdj/driveflow-api:${DRIVEFLOW_TAG:-latest}
+    image: jaimegdj/driveflow:api-${DRIVEFLOW_TAG:-latest}
     environment:
       API_PORT: 8080
       DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
@@ -39,15 +47,31 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
 
   web:
-    image: jaimegdj/driveflow-web:${DRIVEFLOW_TAG:-latest}
+    image: jaimegdj/driveflow:web-${DRIVEFLOW_TAG:-latest}
     depends_on:
       api:
         condition: service_healthy
     ports:
       - "${WEB_PORT:-3000}:8080"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
 
 volumes:
   dados_postgres:
