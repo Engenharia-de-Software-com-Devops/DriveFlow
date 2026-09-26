@@ -12,6 +12,7 @@ import { randomRentalFields } from '../util/preenchimentoAleatorio';
 import BotaoPreenchimentoAleatorio from './BotaoPreenchimentoAleatorio';
 import Modal from './Modal';
 import type { ControleAcaoPagina } from './Page';
+import StatusBanner from './StatusBanner';
 
 interface Props {
   empresaId: string;
@@ -207,7 +208,7 @@ export default function Locacoes({ empresaId, veiculos, locacoes, aoAtualizar, o
         <p className="ajuda">Cadastre um veiculo disponivel para criar reservas.</p>
       )}
 
-      {erro && !modalAberto && <p role="alert" className="erro">{erro}</p>}
+      {erro && !modalAberto && <StatusBanner tipo="error" mensagem={erro} />}
 
       <Modal aberto={modalAberto} titulo="Nova reserva" onFechar={fecharModal}>
         <form onSubmit={enviar} className="modal-form">
@@ -263,7 +264,7 @@ export default function Locacoes({ empresaId, veiculos, locacoes, aoAtualizar, o
             Valor estimado: {valorEstimado != null ? formatarMoeda(valorEstimado) : '-'}
           </p>
 
-          {erro && <p role="alert" className="erro">{erro}</p>}
+          {erro && <StatusBanner tipo="error" mensagem={erro} />}
 
           <div className="modal-acoes">
             <button type="button" className="botao-secundario" onClick={fecharModal} disabled={enviando}>

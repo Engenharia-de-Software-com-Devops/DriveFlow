@@ -66,7 +66,7 @@ export default function CadastroEmpresa({ aoCadastrar }: Props) {
           {enviando ? 'Cadastrando...' : 'Cadastrar empresa'}
         </button>
       </form>
-      {erro && <p role="alert" className="erro">{erro}</p>}
+      {erro && <StatusBanner tipo="error" mensagem={erro} />}
     </section>
   );
 }

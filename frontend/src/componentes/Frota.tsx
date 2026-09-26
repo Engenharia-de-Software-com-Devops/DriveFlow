@@ -4,6 +4,7 @@ import { randomVehicleFields } from '../util/preenchimentoAleatorio';
 import BotaoPreenchimentoAleatorio from './BotaoPreenchimentoAleatorio';
 import Modal from './Modal';
 import type { ControleAcaoPagina } from './Page';
+import StatusBanner from './StatusBanner';
 
 interface Props {
   empresaId: string;
@@ -156,7 +157,7 @@ export default function Frota({ empresaId, veiculos, aoAtualizar, onControleAcao
             required
           />
 
-          {erro && <p role="alert" className="erro">{erro}</p>}
+          {erro && <StatusBanner tipo="error" mensagem={erro} />}
 
           <div className="modal-acoes">
             <button type="button" className="botao-secundario" onClick={fecharModal} disabled={enviando}>
