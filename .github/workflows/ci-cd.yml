@@ -7,10 +7,15 @@ name: CI/CD
 #   1. analise estatica -> 2. seguranca -> 3. testes de unidade
 #   -> 4. testes de integracao -> 5. build -> 6. smoke test da stack docker
 #
-# Etapas 1 a 6 sao o CI e rodam em todo push e PR. As etapas 7 e 8 sao o CD,
+# Etapas 1 a 6 sao o CI e rodam em todo push e PR. As etapas 7 a 9 sao o CD,
 # so em push na main: a 7 publica no Docker Hub as mesmas imagens que o smoke
-# test validou (docker save/load), sem rebuild; a 8 implanta essas imagens na
-# maquina do runner self-hosted.
+# test validou (docker save/load), sem rebuild; a 8 cria a tag vX.Y.Z e a
+# release no GitHub; a 9 implanta essas imagens na maquina do runner
+# self-hosted.
+#
+# A versao sai dos Conventional Commits desde a ultima tag
+# (scripts/next-version.sh), calculada uma vez no job `versao`, em paralelo
+# com o CI, e vai para o /health da api, as tags do Docker Hub e a tag do git.
 
 on:
   push:
@@ -31,6 +36,31 @@ env:
   DATABASE_URL_CI: postgres://driveflow:driveflow@localhost:5432/driveflow?sslmode=disable
 
 jobs:
+  # ---- Versao da release -----------------------------------------------------
+  # Em PR mostra qual versao o merge vai gerar; so a main usa o valor.
+  versao:
+    name: 0. Versão — próxima release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      versao: ${{ steps.calcular.outputs.versao }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historico completo e tags: a versao depende dos commits desde a ultima tag.
+          fetch-depth: 0
+
+      - name: Testar o cálculo de versão
+        run: bash scripts/next-version_test.sh
+
+      - name: Calcular a versão
+        id: calcular
+        run: |
+          versao=$(bash scripts/next-version.sh)
+          echo "versao=$versao" >> "$GITHUB_OUTPUT"
+          echo "### Próxima release: v$versao" >> "$GITHUB_STEP_SUMMARY"
+          echo "Próxima release: v$versao"
+
   # ---- 1. Analise estatica -------------------------------------------------
   analise-estatica:
     name: 1. Análise estática
@@ -288,8 +318,12 @@ jobs:
   smoke-docker:
     name: 6. Smoke test — docker compose
     runs-on: ubuntu-24.04
-    needs: build
+    needs: [build, versao]
     timeout-minutes: 20
+    env:
+      # Na main a imagem ja nasce com a versao da release, que o /health reporta;
+      # fora dela fica vazia e a api mantem o padrao do codigo.
+      DRIVEFLOW_VERSION: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.versao.outputs.versao || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -312,7 +346,11 @@ jobs:
           curl -fsS "$base/rota-inexistente" | grep -q '<div id="root">'
 
           echo "GET /health"
-          curl -fsS "$base/health"
+          health=$(curl -fsS "$base/health")
+          echo "$health"
+          if [ -n "$DRIVEFLOW_VERSION" ]; then
+            echo "$health" | jq -e --arg v "$DRIVEFLOW_VERSION" '.versao == $v'
+          fi
 
           echo "POST /api/empresas"
           company=$(curl -fsS -X POST "$base/api/empresas" \
@@ -349,7 +387,7 @@ jobs:
   publicar:
     name: 7. CD — publicar no Docker Hub
     runs-on: ubuntu-24.04
-    needs: smoke-docker
+    needs: [smoke-docker, versao]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 15
     steps:
@@ -368,34 +406,68 @@ jobs:
 
       # Um unico repositorio publico (o plano gratuito do Docker Hub nao deixou
       # tornar publico um segundo), com o servico no prefixo da tag:
-      # <servico>-<sha do commit>, rastreavel, e <servico>-latest, que o
-      # docker-compose.prod.yml usa por padrao.
+      # <servico>-v<versao>, a release; <servico>-<sha do commit>, rastreavel;
+      # e <servico>-latest, que o docker-compose.prod.yml usa por padrao.
       - name: Tag e push
         env:
           REPOSITORIO: ${{ secrets.DOCKERHUB_USERNAME }}/driveflow
+          VERSAO: ${{ needs.versao.outputs.versao }}
         run: |
           for servico in api web; do
-            for tag in ${{ github.sha }} latest; do
+            for tag in "v$VERSAO" ${{ github.sha }} latest; do
               docker tag driveflow-$servico $REPOSITORIO:$servico-$tag
               docker push $REPOSITORIO:$servico-$tag
             done
           done
 
-  # ---- 8. CD: implantacao no runner self-hosted -----------------------------
+  # ---- 8. CD: tag e release no GitHub ---------------------------------------
+  # So depois do push das imagens: a tag vX.Y.Z nunca aponta para uma versao
+  # sem imagem no Docker Hub. As notas vem dos PRs mesclados desde a ultima tag.
+  release:
+    name: 8. CD — tag e release no GitHub
+    runs-on: ubuntu-24.04
+    needs: [publicar, versao]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v${{ needs.versao.outputs.versao }}
+    steps:
+      # Um re-run encontra a release ja criada e segue sem duplicar.
+      - name: Criar tag e release
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG já existe."
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "DriveFlow $TAG" --generate-notes
+          fi
+          echo "### Release [$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---- 9. CD: implantacao no runner self-hosted -----------------------------
   # Roda na maquina do runner registrado no repositorio (labels self-hosted,
-  # Linux, X64): baixa do Docker Hub as imagens que acabaram de ser publicadas
-  # e sobe a stack de producao. O banco fica no volume, entre implantacoes.
+  # Linux, X64): baixa do Docker Hub as imagens da release que acabou de ser
+  # criada e sobe a stack de producao. O banco fica no volume, entre implantacoes.
   implantar:
-    name: 8. CD — implantar no servidor self-hosted
+    name: 9. CD — implantar no servidor self-hosted
     runs-on: [self-hosted, Linux, X64]
-    needs: publicar
+    needs: [release, versao]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 15
     env:
-      # O SHA, e nao `latest`, garante que sobe exatamente o que este run publicou.
-      DRIVEFLOW_TAG: ${{ github.sha }}
+      # A tag da release, e nao `latest`, garante que sobe exatamente o que este run publicou.
+      VERSAO: ${{ needs.versao.outputs.versao }}
+      DRIVEFLOW_TAG: v${{ needs.versao.outputs.versao }}
     steps:
       - uses: actions/checkout@v4
+
+      # Na primeira implantacao ainda nao ha stack: isso nao e falha.
+      - name: Versão em execução (antes)
+        run: |
+          docker compose -f docker-compose.prod.yml ps --format 'table {{.Service}}\t{{.Image}}\t{{.Status}}'
+          curl -fsS http://localhost:3000/health || echo "Nenhuma versão respondendo em :3000."
 
       - name: Baixar as imagens publicadas
         run: docker compose -f docker-compose.prod.yml pull
@@ -406,11 +478,15 @@ jobs:
       - name: Verificar pela stack
         run: |
           set -euo pipefail
-          curl -fsS --retry 10 --retry-all-errors --retry-delay 2 http://localhost:3000/health
+          health=$(curl -fsS --retry 10 --retry-all-errors --retry-delay 2 http://localhost:3000/health)
+          echo "$health"
+          echo "$health" | jq -e --arg v "$VERSAO" '.versao == $v'
           curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
 
       - name: Versão implantada
-        run: docker compose -f docker-compose.prod.yml ps --format 'table {{.Service}}\t{{.Image}}\t{{.Status}}'
+        run: |
+          docker compose -f docker-compose.prod.yml ps --format 'table {{.Service}}\t{{.Image}}\t{{.Status}}'
+          echo "### Implantado: $DRIVEFLOW_TAG" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Logs dos containers
         if: failure()
