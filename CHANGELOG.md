@@ -3,6 +3,13 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento conforme [SemVer](https://semver.org/lang/pt-BR/).
 
+A partir da 0.2.0 a versão é calculada pelo pipeline a cada merge na `main`,
+pelos Conventional Commits desde a última tag (`feat` sobe a minor, `!` ou
+`BREAKING CHANGE` sobe a major, o resto sobe a patch), e as notas de cada
+versão ficam nas
+[Releases do GitHub](https://github.com/Engenharia-de-Software-com-Devops/DriveFlow/releases),
+geradas a partir dos PRs mesclados.
+
 ## [0.1.0] — 2026-09-12
 
 Primeira base executável do projeto integrador (Encontro 2).

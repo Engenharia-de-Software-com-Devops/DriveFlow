@@ -10,8 +10,14 @@ RUN go mod download
 
 COPY . .
 
+# Version reported by GET /health; the pipeline passes the release being built.
+# Left empty (local builds), the default in server.go stays.
+ARG VERSION=
+
 # Binario estatico: a imagem final nao precisa de toolchain Go nem de libc.
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/api ./cmd/app
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
+    -ldflags="-s -w ${VERSION:+-X driveflow/backend/internal/delivery/http.Version=$VERSION}" \
+    -o /bin/api ./cmd/app
 
 # ---- Imagem final --------------------------------------------------------
 FROM alpine:3.20

@@ -31,6 +31,9 @@ services:
   api:
     build:
       context: ./backend
+      args:
+        # Set by the pipeline to the release version; empty keeps the default.
+        VERSION: ${DRIVEFLOW_VERSION:-}
     container_name: driveflow-api
     environment:
       API_PORT: 8080

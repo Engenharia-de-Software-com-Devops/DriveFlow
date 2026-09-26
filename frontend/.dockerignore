@@ -2,6 +2,9 @@ node_modules/
 dist/
 coverage/
 .env*
+# Tests do not ship: the build stage only needs the app sources.
+**/*.test.*
+src/test/
 Dockerfile
 Dockerfile.dev
 .dockerignore
