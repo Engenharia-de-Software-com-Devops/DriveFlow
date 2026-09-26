@@ -240,14 +240,14 @@ Cada etapa só começa quando a anterior passa.
 
 | Etapa | Job | O que faz | Quando roda |
 | ----- | --- | --------- | ----------- |
-| CI | 1. Análise estática | `gofmt`, `go vet`, `staticcheck`, direção das dependências entre camadas, migrations, ESLint, `tsc` e validade dos arquivos de compose | todo push e PR para `dev` e `main` |
+| CI | 1. Análise estática | `gofmt`, `go vet`, `staticcheck`, direção das dependências entre camadas, migrations, ESLint, `tsc` e validade dos arquivos de compose | todo push e PR para `dev`, `homo` e `main` |
 | CI | 2. Segurança | `govulncheck` e `npm audit` | idem |
 | CI | 3. Testes de unidade | Go (`-race`, `-shuffle`, cobertura) e Vitest | idem |
 | CI | 4. Testes de integração | testes do repositório contra o Postgres do compose | idem |
 | CI | 5. Build | binário da api e bundle do frontend | idem |
 | CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato | idem |
-| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
-| CD | 8. Implantar | no runner *self-hosted* do repositório: `docker compose -f docker-compose.prod.yml pull` e `up -d --wait` com `DRIVEFLOW_TAG=<sha>`, depois `curl` em `/health` e `/` | só em push na `main`, depois do 7 |
+| CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` (e `<serviço>-latest`, só na `main`) e faz `docker push` em `jaimegdj/driveflow` | só em push na `main` ou na `homo`, depois do CI verde |
+| CD | 8. Implantar | no runner *self-hosted* do repositório: `docker compose -f docker-compose.prod.yml pull` e `up -d --wait` com `DRIVEFLOW_TAG=<sha>`, depois `curl` em `/health` e `/` | só em push na `main` ou na `homo`, depois do 7 |
 
 O CD publica exatamente as imagens que o CI testou: não há rebuild. As
 credenciais ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`

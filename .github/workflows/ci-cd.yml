@@ -8,15 +8,15 @@ name: CI/CD
 #   -> 4. testes de integracao -> 5. build -> 6. smoke test da stack docker
 #
 # Etapas 1 a 6 sao o CI e rodam em todo push e PR. As etapas 7 e 8 sao o CD,
-# so em push na main: a 7 publica no Docker Hub as mesmas imagens que o smoke
-# test validou (docker save/load), sem rebuild; a 8 implanta essas imagens na
-# maquina do runner self-hosted.
+# so em push na main ou na homo: a 7 publica no Docker Hub as mesmas imagens
+# que o smoke test validou (docker save/load), sem rebuild; a 8 implanta essas
+# imagens na maquina do runner self-hosted.
 
 on:
   push:
-    branches: [dev, main]
+    branches: [dev, homo, main]
   pull_request:
-    branches: [dev, main]
+    branches: [dev, homo, main]
 
 # Um push novo na mesma branch cancela a esteira antiga, que ja esta obsoleta.
 concurrency:
@@ -350,7 +350,7 @@ jobs:
     name: 7. CD — publicar no Docker Hub
     runs-on: ubuntu-24.04
     needs: smoke-docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/homo')
     timeout-minutes: 15
     steps:
       - uses: actions/download-artifact@v4
@@ -369,13 +369,15 @@ jobs:
       # Um unico repositorio publico (o plano gratuito do Docker Hub nao deixou
       # tornar publico um segundo), com o servico no prefixo da tag:
       # <servico>-<sha do commit>, rastreavel, e <servico>-latest, que o
-      # docker-compose.prod.yml usa por padrao.
+      # docker-compose.prod.yml usa por padrao. So a main move o latest: um
+      # push em homo publica apenas o SHA, que o job 8 implanta.
       - name: Tag e push
         env:
           REPOSITORIO: ${{ secrets.DOCKERHUB_USERNAME }}/driveflow
+          TAGS: ${{ github.sha }}${{ github.ref == 'refs/heads/main' && ' latest' || '' }}
         run: |
           for servico in api web; do
-            for tag in ${{ github.sha }} latest; do
+            for tag in $TAGS; do
               docker tag driveflow-$servico $REPOSITORIO:$servico-$tag
               docker push $REPOSITORIO:$servico-$tag
             done
@@ -389,7 +391,7 @@ jobs:
     name: 8. CD — implantar no servidor self-hosted
     runs-on: [self-hosted, Linux, X64]
     needs: publicar
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/homo')
     timeout-minutes: 15
     env:
       # O SHA, e nao `latest`, garante que sobe exatamente o que este run publicou.
