@@ -27,11 +27,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
       args:
-        UID: ${LOCAL_UID:-1000}
-        GID: ${LOCAL_GID:-1000}
+        UID: "${LOCAL_UID:-1000}"
+        GID: "${LOCAL_GID:-1000}"
     container_name: driveflow-dev-api
     environment:
-      API_PORT: 8080
+      API_PORT: "8080"
       DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
     volumes:
       - ./backend:/app
@@ -46,8 +46,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
       args:
-        UID: ${LOCAL_UID:-1000}
-        GID: ${LOCAL_GID:-1000}
+        UID: "${LOCAL_UID:-1000}"
+        GID: "${LOCAL_GID:-1000}"
     container_name: driveflow-dev-web
     environment:
       HOST: 0.0.0.0

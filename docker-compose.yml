@@ -36,7 +36,7 @@ services:
         VERSION: ${DRIVEFLOW_VERSION:-}
     container_name: driveflow-api
     environment:
-      API_PORT: 8080
+      API_PORT: "8080"
       DATABASE_URL: postgres://${POSTGRES_USER:-driveflow}:${POSTGRES_PASSWORD:-driveflow}@db:5432/${POSTGRES_DB:-driveflow}?sslmode=disable
     depends_on:
       db:
