@@ -56,6 +56,18 @@ func (m *MemoryRepository) FindCompany(_ context.Context, companyID string) (ent
 	return c, nil
 }
 
+func (m *MemoryRepository) ListCompanies(_ context.Context) ([]entities.Company, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	listed := make([]entities.Company, 0, len(m.companies))
+	for _, c := range m.companies {
+		listed = append(listed, c)
+	}
+	sort.Slice(listed, func(i, j int) bool { return listed[i].Name < listed[j].Name })
+	return listed, nil
+}
+
 func (m *MemoryRepository) CreateVehicle(_ context.Context, v entities.Vehicle) (entities.Vehicle, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

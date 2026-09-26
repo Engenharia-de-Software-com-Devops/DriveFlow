@@ -45,6 +45,11 @@ func (s *CompanyService) Register(ctx context.Context, name, taxID string) (enti
 	})
 }
 
+// List devolve as empresas cadastradas, ordenadas por nome.
+func (s *CompanyService) List(ctx context.Context) ([]entities.Company, error) {
+	return s.repo.ListCompanies(ctx)
+}
+
 func onlyDigits(s string) string {
 	var b strings.Builder
 	for _, r := range s {
