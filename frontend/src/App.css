@@ -461,6 +461,33 @@ td button {
   color: var(--cor-ok);
 }
 
+.status-banner {
+  margin: 0.75rem 0 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.status-banner--loading {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #bae6fd;
+}
+
+.status-banner--success {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #bbf7d0;
+}
+
+.status-banner--error {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -523,6 +550,12 @@ td button {
 
 .modal-fechar:hover {
   color: var(--cor-texto);
+}
+
+.form-preenchimento-aleatorio {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
 }
 
 .modal-acoes {

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { cadastrarVeiculo, formatarMoeda, ErroApi, type Veiculo } from '../api';
+import { randomVehicleFields } from '../util/preenchimentoAleatorio';
+import BotaoPreenchimentoAleatorio from './BotaoPreenchimentoAleatorio';
 import Modal from './Modal';
 import type { ControleAcaoPagina } from './Page';
+import StatusBanner from './StatusBanner';
 
 interface Props {
   empresaId: string;
@@ -43,6 +46,11 @@ export default function Frota({ empresaId, veiculos, aoAtualizar, onControleAcao
 
   function alterar(campo: keyof Form, valor: string) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  function preencherAleatorio() {
+    setForm(randomVehicleFields());
+    setErro('');
   }
 
   async function enviar(evento: FormEvent) {
@@ -104,6 +112,9 @@ export default function Frota({ empresaId, veiculos, aoAtualizar, onControleAcao
 
       <Modal aberto={modalAberto} titulo="Adicionar veiculo" onFechar={fecharModal}>
         <form onSubmit={enviar} className="modal-form">
+          <div className="form-preenchimento-aleatorio">
+            <BotaoPreenchimentoAleatorio onClick={preencherAleatorio} disabled={enviando} />
+          </div>
           <label htmlFor="veiculo-placa">Placa</label>
           <input
             id="veiculo-placa"
@@ -146,7 +157,7 @@ export default function Frota({ empresaId, veiculos, aoAtualizar, onControleAcao
             required
           />
 
-          {erro && <p role="alert" className="erro">{erro}</p>}
+          {erro && <StatusBanner tipo="error" mensagem={erro} />}
 
           <div className="modal-acoes">
             <button type="button" className="botao-secundario" onClick={fecharModal} disabled={enviando}>
