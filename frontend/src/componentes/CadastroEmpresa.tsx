@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { criarEmpresa, ErroApi, type Empresa } from '../api';
 import { randomCompanyFields } from '../util/preenchimentoAleatorio';
 import BotaoPreenchimentoAleatorio from './BotaoPreenchimentoAleatorio';
+import StatusBanner from './StatusBanner';
 
 interface Props {
   aoCadastrar: (empresa: Empresa) => void;
