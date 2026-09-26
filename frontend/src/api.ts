@@ -56,8 +56,13 @@ export interface Veiculo {
   status: string;
 }
 
+export interface Saude {
+  status: string;
+  versao: string;
+}
+
 export function verificarSaude() {
-  return requisitar('/health');
+  return requisitar<Saude>('/health');
 }
 
 export function criarEmpresa(nome: string, cnpj: string) {

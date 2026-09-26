@@ -4,6 +4,7 @@ import type { Empresa } from '../api';
 
 interface Props {
   empresa: Empresa | null;
+  versao: string | null;
   onSair: () => void;
 }
 
@@ -17,7 +18,7 @@ function classeLink({ isActive }: { isActive: boolean }) {
   return isActive ? 'navbar-link navbar-link-ativa' : 'navbar-link';
 }
 
-export default function Navbar({ empresa, onSair }: Props) {
+export default function Navbar({ empresa, versao, onSair }: Props) {
   const [aberto, setAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -67,31 +68,34 @@ export default function Navbar({ empresa, onSair }: Props) {
           )}
         </div>
 
-        {empresa && (
-          <div className="navbar-menu" ref={menuRef}>
-            <button
-              type="button"
-              className="navbar-trigger"
-              aria-expanded={aberto}
-              aria-haspopup="true"
-              onClick={() => setAberto((atual) => !atual)}
-            >
-              {empresa.nome}
-              <span className="navbar-chevron" aria-hidden="true">
-                ▾
-              </span>
-            </button>
+        <div className="navbar-direita">
+          <span className="navbar-versao">v{versao ?? '—'}</span>
+          {empresa && (
+            <div className="navbar-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="navbar-trigger"
+                aria-expanded={aberto}
+                aria-haspopup="true"
+                onClick={() => setAberto((atual) => !atual)}
+              >
+                {empresa.nome}
+                <span className="navbar-chevron" aria-hidden="true">
+                  ▾
+                </span>
+              </button>
 
-            {aberto && (
-              <div className="navbar-dropdown" role="menu">
-                <p className="navbar-dropdown-cnpj">CNPJ {formatarCnpj(empresa.cnpj)}</p>
-                <button type="button" className="botao-secundario navbar-sair" onClick={sair}>
-                  Sair
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+              {aberto && (
+                <div className="navbar-dropdown" role="menu">
+                  <p className="navbar-dropdown-cnpj">CNPJ {formatarCnpj(empresa.cnpj)}</p>
+                  <button type="button" className="botao-secundario navbar-sair" onClick={sair}>
+                    Sair
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </nav>
   );

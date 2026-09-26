@@ -103,6 +103,21 @@ body {
   color: var(--cor-destaque);
 }
 
+.navbar-direita {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.navbar-versao {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--cor-destaque);
+  letter-spacing: 0.02em;
+}
+
 .navbar-menu {
   position: relative;
 }

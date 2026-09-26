@@ -67,6 +67,9 @@ func TestHealth(t *testing.T) {
 	if body["status"] != "ok" {
 		t.Errorf("status do corpo = %v, esperado ok", body["status"])
 	}
+	if body["versao"] != httpdelivery.Version {
+		t.Errorf("versao = %v, esperado %s", body["versao"], httpdelivery.Version)
+	}
 }
 
 func TestListCompaniesReturnsEmptyArray(t *testing.T) {

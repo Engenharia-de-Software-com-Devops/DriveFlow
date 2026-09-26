@@ -25,11 +25,15 @@ export default function App() {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [locacoes, setLocacoes] = useState<Locacao[]>([]);
   const [apiNoAr, setApiNoAr] = useState<boolean | null>(null);
+  const [versao, setVersao] = useState<string | null>(null);
   const [erro, setErro] = useState('');
 
   useEffect(() => {
     verificarSaude()
-      .then(() => setApiNoAr(true))
+      .then((saude) => {
+        setApiNoAr(true);
+        setVersao(saude.versao);
+      })
       .catch(() => setApiNoAr(false));
   }, []);
 
@@ -68,7 +72,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Navbar empresa={empresa} onSair={trocarEmpresa} />
+      <Navbar empresa={empresa} versao={versao} onSair={trocarEmpresa} />
 
       <div className="app-conteudo">
         {apiNoAr === false && (
