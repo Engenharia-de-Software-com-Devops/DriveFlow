@@ -247,8 +247,11 @@ Cada etapa só começa quando a anterior passa.
 | CI | 5. Build | binário da api e bundle do frontend | idem |
 | CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato | idem |
 | CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
+| CD | 8. Implantar | no runner self-hosted `jaime-note`: `docker compose -f docker-compose.prod.yml pull` e `up --wait` com `DRIVEFLOW_TAG=<sha>`, depois `/health` pelo web | só em push na `main`, depois do job 7 |
 
-O CD publica exatamente as imagens que o CI testou: não há rebuild. As
+O CD publica exatamente as imagens que o CI testou: não há rebuild. O job 8
+implanta a tag do SHA, e não `latest`, então sobe exatamente o que o run publicou;
+o banco fica no volume `dados_postgres` entre implantações. As
 credenciais ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`
 (*Settings → Secrets and variables → Actions*), nunca no YAML.
 
