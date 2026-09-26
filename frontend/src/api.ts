@@ -67,6 +67,10 @@ export function criarEmpresa(nome: string, cnpj: string) {
   });
 }
 
+export function listarEmpresas() {
+  return requisitar<Empresa[]>('/api/empresas');
+}
+
 export function listarFrota(empresaId: string) {
   return requisitar<Veiculo[]>(`/api/empresas/${empresaId}/veiculos`);
 }

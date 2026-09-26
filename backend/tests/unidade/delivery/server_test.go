@@ -45,6 +45,20 @@ func call(t *testing.T, s *httpdelivery.Server, method, route string, body any) 
 	return resp.Code, decoded
 }
 
+func callList(t *testing.T, s *httpdelivery.Server, route string) (int, []map[string]any) {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, route, nil)
+	resp := httptest.NewRecorder()
+	s.ServeHTTP(resp, req)
+
+	var decoded []map[string]any
+	if err := json.Unmarshal(resp.Body.Bytes(), &decoded); err != nil {
+		t.Fatalf("json.Unmarshal lista: %v (corpo: %s)", err, resp.Body.String())
+	}
+	return resp.Code, decoded
+}
+
 func TestHealth(t *testing.T) {
 	status, body := call(t, newServer(t), http.MethodGet, "/health", nil)
 	if status != http.StatusOK {
@@ -52,6 +66,42 @@ func TestHealth(t *testing.T) {
 	}
 	if body["status"] != "ok" {
 		t.Errorf("status do corpo = %v, esperado ok", body["status"])
+	}
+}
+
+func TestListCompaniesReturnsEmptyArray(t *testing.T) {
+	status, body := callList(t, newServer(t), "/api/empresas")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, esperado 200", status)
+	}
+	if body == nil || len(body) != 0 {
+		t.Fatalf("corpo = %#v, esperado []", body)
+	}
+}
+
+func TestListCompaniesReturnsRegistered(t *testing.T) {
+	s := newServer(t)
+
+	if status, _ := call(t, s, http.MethodPost, "/api/empresas", map[string]any{
+		"nome": "Locadora Zeta", "cnpj": "98765432000121",
+	}); status != http.StatusCreated {
+		t.Fatalf("criar zeta: status = %d, esperado 201", status)
+	}
+	if status, _ := call(t, s, http.MethodPost, "/api/empresas", map[string]any{
+		"nome": "Locadora Alfa", "cnpj": "12345678000190",
+	}); status != http.StatusCreated {
+		t.Fatalf("criar alfa: status = %d, esperado 201", status)
+	}
+
+	status, listed := callList(t, s, "/api/empresas")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, esperado 200", status)
+	}
+	if len(listed) != 2 {
+		t.Fatalf("len = %d, esperado 2", len(listed))
+	}
+	if listed[0]["nome"] != "Locadora Alfa" || listed[1]["nome"] != "Locadora Zeta" {
+		t.Errorf("ordem = %v, %v; esperado Alfa, Zeta", listed[0]["nome"], listed[1]["nome"])
 	}
 }
 

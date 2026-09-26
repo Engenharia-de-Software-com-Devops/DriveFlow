@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
 import { listarFrota, listarLocacoes, verificarSaude, type Empresa, type Locacao, type Veiculo } from './api';
 import CadastroEmpresa from './componentes/CadastroEmpresa';
+import ListaEmpresas from './componentes/ListaEmpresas';
 import Navbar from './componentes/Navbar';
 import PaginaFrota from './paginas/PaginaFrota';
 import PaginaReservas from './paginas/PaginaReservas';
@@ -84,8 +85,13 @@ export default function App() {
                 empresa ? (
                   <Navigate to="/frota" replace />
                 ) : (
-                  <div className="conteudo-central">
-                    <CadastroEmpresa aoCadastrar={selecionarEmpresa} />
+                  <div className="login-palco">
+                    <div className="login-cadastro">
+                      <CadastroEmpresa aoCadastrar={selecionarEmpresa} />
+                    </div>
+                    <div className="login-lista">
+                      <ListaEmpresas aoSelecionar={selecionarEmpresa} />
+                    </div>
                   </div>
                 )
               }

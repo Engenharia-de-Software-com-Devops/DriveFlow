@@ -1,6 +1,10 @@
 package httpdelivery
 
-import "net/http"
+import (
+	"net/http"
+
+	"driveflow/backend/internal/entities"
+)
 
 type companyRequest struct {
 	Name  string `json:"nome"`
@@ -19,4 +23,16 @@ func (s *Server) createCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, company)
+}
+
+func (s *Server) listCompanies(w http.ResponseWriter, r *http.Request) {
+	companies, err := s.companies.List(r.Context())
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	if companies == nil {
+		companies = []entities.Company{}
+	}
+	writeJSON(w, http.StatusOK, companies)
 }
