@@ -247,10 +247,15 @@ Cada etapa só começa quando a anterior passa.
 | CI | 5. Build | binário da api e bundle do frontend | idem |
 | CI | 6. Smoke test | `docker compose up --build --wait`, requisições reais pelo nginx do web e `docker save` das imagens como artefato | idem |
 | CD | 7. Publicar | carrega as imagens do smoke test (`docker load`), marca como `<serviço>-<sha>` e `<serviço>-latest` e faz `docker push` em `jaimegdj/driveflow` | só em push na `main`, depois do CI verde |
+| CD | 8. Implantar | no runner *self-hosted* do repositório: `docker compose -f docker-compose.prod.yml pull` e `up -d --wait` com `DRIVEFLOW_TAG=<sha>`, depois `curl` em `/health` e `/` | só em push na `main`, depois do 7 |
 
 O CD publica exatamente as imagens que o CI testou: não há rebuild. As
 credenciais ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`
 (*Settings → Secrets and variables → Actions*), nunca no YAML.
+
+A implantação sobe a stack em `http://localhost:3000` na máquina do runner
+*self-hosted*, que precisa estar online (*Settings → Actions → Runners*);
+sem ele, o job 8 fica na fila.
 
 `main` e `dev` exigem os jobs de CI verdes antes do merge. Evidência de
 pipeline verde, de uma falha real já corrigida e do teste que trava a
